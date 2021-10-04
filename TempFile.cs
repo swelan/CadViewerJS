@@ -112,6 +112,25 @@ namespace CadViewer
 				PhysicalFile = file
 			};
 		}
+
+		private static bool ServerCertificateValidator (object sender, X509Certificate rawcert, X509Chain chain, SslPolicyErrors error)
+		{
+			//
+			// If there is an SslPolicyError => terminate (unless we're in debug mode)
+			// Otherwise, validate the DnsName against the configured whitelist
+			//
+			if (null != rawcert && (AppConfig.IsDebug || SslPolicyErrors.None == error))
+			{
+				using (var cert = new X509Certificate2(rawcert))
+				{
+					//string subject = cert.GetNameInfo(X509NameType.SimpleName, false);
+					string dns_name = cert.GetNameInfo(X509NameType.DnsName, false);
+					return Util.DomainMatchesWildcard(dns_name, AppConfig.DomainWhitelist);
+				}
+			}
+			return false;
+		}
+
 		/// <summary>
 		/// Download a file from a whitelisted source url using the provided AuthorizationContext
 		/// </summary>
@@ -155,26 +174,9 @@ namespace CadViewer
 				// allow whitelisted domains only
 				// in debug mode: also suppress certificate errors for whitelisted domains
 				//
-				System.Net.ServicePointManager.ServerCertificateValidationCallback += (sender, rawcert, chain, error) =>
-				{
-					//
-					// If there is an SslPolicyError => terminate (unless we're in debug mode)
-					// Otherwise, validate the DnsName against the configured whitelist
-					//
-					if (null != rawcert && (AppConfig.IsDebug || SslPolicyErrors.None == error))
-					{
-						using (var cert = new X509Certificate2(rawcert))
-						{
-							//string subject = cert.GetNameInfo(X509NameType.SimpleName, false);
-							string dns_name = cert.GetNameInfo(X509NameType.DnsName, false);
-							return Util.DomainMatchesWildcard(dns_name, whitelist);
-						}
-					}
-					return false;
-				};
-
 				try
 				{
+					System.Net.ServicePointManager.ServerCertificateValidationCallback += ServerCertificateValidator;
 					http.DownloadFile(Source, res.PhysicalFile.FullName);
 					res.PhysicalFile.Refresh();
 					return res;
@@ -182,6 +184,10 @@ namespace CadViewer
 				catch (Exception e)
 				{
 					throw (e);
+				}
+				finally
+				{
+					System.Net.ServicePointManager.ServerCertificateValidationCallback -= ServerCertificateValidator;
 				}
 			}
 		}

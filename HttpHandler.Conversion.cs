@@ -118,19 +118,16 @@ namespace CadViewer.HttpHandler
 					};
 				}
 			}
-			else
+			result = result ?? new
 			{
-				result = result ?? new
+				success = false,
+				error = new
 				{
-					success = false,
-					error = new
-					{
-						message = $"Invalid input file '{source?.PhysicalFile?.Name ?? "null"}'",
-						input = source?.PhysicalFile?.Name,
-					}
-				};
-			}
-			Util.ToJSON(result ?? new { success = false }, Response.Output);
+					message = $"Invalid input file '{source?.PhysicalFile?.Name ?? "null"}'",
+					input = source?.PhysicalFile?.Name,
+				}
+			};
+			Util.ToJSON(result, Response.Output);
 		}
 		public bool IsReusable { get => false; }
 
