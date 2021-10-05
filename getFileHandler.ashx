@@ -1,4 +1,4 @@
-﻿<%@ WebHandler Language="C#" Class="Handler" CodeBehind="getFileHandler.cs" %>
+﻿<%@ WebHandler Language="C#" Class="Handler" %>
 using CadViewer;
 using System.Web;
 
