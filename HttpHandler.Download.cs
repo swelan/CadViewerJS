@@ -45,6 +45,19 @@ namespace CadViewer.HttpHandler
 				if (!String.IsNullOrWhiteSpace(mime)) Response.ContentType = mime;
 
 				//
+				// Indicate file name
+				// TODO: supply the name part via parameters
+				//
+				Response.AddHeader("Content-Disposition", new System.Net.Http.Headers.ContentDispositionHeaderValue("attachment")
+				{
+					Size = file.PhysicalFile.Length,
+					CreationDate = file.PhysicalFile.CreationTime,
+					ModificationDate = file.PhysicalFile.LastWriteTime,
+					FileName = file.PhysicalFile.Name,
+					FileNameStar = file.PhysicalFile.Name
+				}.ToString());
+
+				//
 				// TODO:
 				// It should be possible to attach a listener to the IO-completion event (that's how we do it in C++/ISAPI)
 				// but I'm unsure how it's done in c#/.net at this point.
