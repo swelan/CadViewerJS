@@ -10,6 +10,52 @@ namespace CadViewer.HttpHandler
 {
 	public class Conversion : IHttpHandler
 	{
+		/// <summary>
+		/// Extract the input file from request parameters
+		/// </summary>
+		/// <param name="Request"></param>
+		/// <param name="Parameters"></param>
+		/// <returns></returns>
+		private TempFile GetInputFile(HttpRequest Request, ConversionRequestParameters Parameters)
+		{
+			var source_url = (Parameters?.contentLocation ?? Request?["url"])?.Trim();
+			var source_fmt = (Parameters?.contentFormat ?? Request["format"])?.Trim();
+
+			if (!String.IsNullOrEmpty(source_url))
+			{
+
+				//
+				// AuthorizationContext information is transmitted using a (secure) cookie name "AuthSession" (Cookie: AuthSession=token=value)
+				// Bearer/Basic are mutually exclusive, FormCookie is always relayed
+				//
+				var auth_cookie = Request.Cookies["AuthSession"];
+
+				return TempFile.DownloadFile(
+					Source: new Uri(source_url),
+					FileExtension: source_fmt,
+					AuthContext: new AuthorizationContext(
+						BearerToken: HttpUtility.UrlDecode(auth_cookie?["token"]),
+						Username: HttpUtility.UrlDecode(auth_cookie?["username"]),
+						Password: HttpUtility.UrlDecode(auth_cookie?["password"]),
+						FormCookie: HttpUtility.UrlDecode(auth_cookie?["cookie"])
+					)
+				);
+			}
+
+			//
+			// Return tempfile from input file stream
+			//
+			var file = Request.Files["file"];
+			if (null != file)
+			{
+				using (var stream = file.InputStream)
+				{
+					return TempFile.CreateTempFile(stream, Request["format"]?.Trim() ?? Util.GetFileExtension(file.FileName));
+				}
+			}
+			
+			return null;
+		}
 		public virtual void ProcessRequest(HttpContext Context)
 		{
 			var Response = Context.Response;
@@ -23,26 +69,10 @@ namespace CadViewer.HttpHandler
 			//
 			var input = ConversionRequestParameters.FromJSON(HttpUtility.UrlDecode(Request["request"]));
 
-			//
-			// AuthorizationContext information is transmitted using a (secure) cookie name "AuthSession" (Cookie: AuthSession=token=value)
-			// Bearer/Basic are mutually exclusive, FormCookie is always relayed
-			//
-			var auth_cookie = Request.Cookies["AuthSession"];
 			TempFile source = null;
-			var source_url = input.contentLocation?.Trim();
-			var source_fmt = input.contentFormat?.Trim().ToLowerInvariant();
 			try
 			{
-				source = TempFile.DownloadFile(
-					Source: new Uri(source_url),
-					FileExtension: source_fmt,
-					AuthContext: new AuthorizationContext(
-						BearerToken: HttpUtility.UrlDecode(auth_cookie?["token"]),
-						Username: HttpUtility.UrlDecode(auth_cookie?["username"]),
-						Password: HttpUtility.UrlDecode(auth_cookie?["password"]),
-						FormCookie: HttpUtility.UrlDecode(auth_cookie?["cookie"])
-					)
-				);
+				source = GetInputFile(Request, input);
 			}
 			catch (Exception e)
 			{
@@ -53,7 +83,8 @@ namespace CadViewer.HttpHandler
 					{
 						type = e.GetType().FullName,
 						message = e.Message,
-						source = input.contentLocation
+						source = input?.contentLocation ?? Request["url"] ?? Request.Files["file"]?.FileName,
+						format = input?.contentFormat ?? Request["format"]
 					}
 				};
 			}
@@ -97,8 +128,8 @@ namespace CadViewer.HttpHandler
 						converter = "AutoXchange AX2020",
 						version = "V1.00",
 						userLabel = "fromCADViewerJS",
-						contentLocation = source_url,
-						contentFormat = source_fmt,
+						contentLocation = input?.contentLocation ?? Request["url"] ?? Request.Files["file"]?.FileName,
+						contentFormat = input?.contentFormat ?? Request["format"] ?? Util.GetFileExtension(Request.Files["file"]?.FileName),
 						contentResponse = "stream",
 						contentStreamData = $"{Path.Combine(AppConfig.GetUri("CadViewer.HandlerRootUrl")?.ToString(), "getFileHandler.ashx")}?remainOnServer=0&fileTag={HttpUtility.UrlEncode(Path.GetFileNameWithoutExtension(output.Name))}&Type={HttpUtility.UrlEncode(converter.OutputFormat)}"
 					};
