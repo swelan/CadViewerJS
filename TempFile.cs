@@ -36,7 +36,14 @@ namespace CadViewer
 			using (var target = new FileStream(PhysicalFile?.FullName, FileMode.Create, FileAccess.Write, FileShare.None))
 			{
 				Source?.CopyTo(target);
-				target.Close();
+				return true;
+			}
+		}
+		public async Task<bool> CreateAsync(Stream Source)
+		{
+			using (var target = new FileStream(PhysicalFile?.FullName, FileMode.Create, FileAccess.Write, FileShare.None))
+			{
+				await Source?.CopyToAsync(target);
 				return true;
 			}
 		}
@@ -45,7 +52,14 @@ namespace CadViewer
 			using (var target = new FileStream(PhysicalFile?.FullName, FileMode.Append, FileAccess.Write, FileShare.None))
 			{
 				Source?.CopyTo(target);
-				target.Close();
+				return true;
+			}
+		}
+		public async Task<bool> AppendAsync(Stream Source)
+		{
+			using (var target = new FileStream(PhysicalFile?.FullName, FileMode.Append, FileAccess.Write, FileShare.None))
+			{
+				await Source?.CopyToAsync(target);
 				return true;
 			}
 		}
@@ -79,10 +93,18 @@ namespace CadViewer
 			{
 				PhysicalFile = new FileInfo(AppConfig.GetRandomTemporaryFileName(FileExtension))
 			};
-			file.Create(Source);
-			return file;
+			if (file.Create(Source)) return file;
+			return null;
 		}
-
+		public static async Task<TempFile> CreateTempFileAsync(Stream Source, string FileExtension = null)
+		{
+			var file = new TempFile()
+			{
+				PhysicalFile = new FileInfo(AppConfig.GetRandomTemporaryFileName(FileExtension))
+			};
+			if (await file.CreateAsync(Source)) return file;
+			return null;
+		}
 		/// <summary>
 		/// Get a TempFile object from the temp folder; throws FileNotFoundException if not there.
 		/// </summary>
@@ -138,7 +160,7 @@ namespace CadViewer
 		/// <param name="FileExtension">The file extension of the temp file</param>
 		/// <param name="AuthContext">Relay authentication/authorization parameters supplied from the client</param>
 		/// <returns></returns>
-		public static TempFile DownloadFile(Uri Source, string FileExtension = null, AuthorizationContext AuthContext = null)
+		public static async Task<TempFile> DownloadFileAsync(Uri Source, string FileExtension = null, AuthorizationContext AuthContext = null)
 		{
 			//
 			// Require TLS connection, unless we're in debug mode
@@ -177,7 +199,7 @@ namespace CadViewer
 				try
 				{
 					System.Net.ServicePointManager.ServerCertificateValidationCallback += ServerCertificateValidator;
-					http.DownloadFile(Source, res.PhysicalFile.FullName);
+					await http.DownloadFileTaskAsync(Source, res.PhysicalFile.FullName);
 					res.PhysicalFile.Refresh();
 					return res;
 				}

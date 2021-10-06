@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace CadViewer.HttpHandler
 {
-	public class Conversion : IHttpHandler
+	public class Conversion : HttpTaskAsyncHandler
 	{
 		/// <summary>
 		/// Extract the input file from request parameters
@@ -16,7 +16,7 @@ namespace CadViewer.HttpHandler
 		/// <param name="Request"></param>
 		/// <param name="Parameters"></param>
 		/// <returns></returns>
-		private TempFile GetInputFile(HttpRequest Request, ConversionRequestParameters Parameters)
+		private async Task<TempFile> GetInputFile(HttpRequest Request, ConversionRequestParameters Parameters)
 		{
 			var source_url = (Parameters?.contentLocation ?? Request?["url"])?.Trim();
 			var source_fmt = (Parameters?.contentFormat ?? Request["format"])?.Trim();
@@ -30,7 +30,7 @@ namespace CadViewer.HttpHandler
 				//
 				var auth_cookie = Request.Cookies["AuthSession"];
 
-				return TempFile.DownloadFile(
+				return await TempFile.DownloadFileAsync(
 					Source: new Uri(source_url),
 					FileExtension: source_fmt,
 					AuthContext: new AuthorizationContext(
@@ -50,13 +50,14 @@ namespace CadViewer.HttpHandler
 			{
 				using (var stream = file.InputStream)
 				{
-					return TempFile.CreateTempFile(stream, Request["format"]?.Trim() ?? Util.GetFileExtension(file.FileName));
+					return await TempFile.CreateTempFileAsync(stream, Request["format"]?.Trim() ?? Util.GetFileExtension(file.FileName));
 				}
 			}
 			
 			return null;
 		}
-		public virtual void ProcessRequest(HttpContext Context)
+
+		public override async Task ProcessRequestAsync(HttpContext Context)
 		{
 			var Response = Context.Response;
 			var Request = Context.Request;
@@ -72,7 +73,7 @@ namespace CadViewer.HttpHandler
 			TempFile source = null;
 			try
 			{
-				source = GetInputFile(Request, input);
+				source = await GetInputFile(Request, input);
 			}
 			catch (Exception e)
 			{
@@ -96,8 +97,9 @@ namespace CadViewer.HttpHandler
 				//
 				var converter = new Converter()
 				{
+					Action = input?.action,
 					InputFileName = source.FullName,
-					OutputFormat = input.GetParameterValue("f")?.ToString().Trim().ToLowerInvariant() ?? "svg"
+					OutputFormat = input?.GetParameterValue("f")?.ToString().Trim().ToLowerInvariant() ?? "svg"
 				};
 
 				if (null != input.parameters)
@@ -112,7 +114,7 @@ namespace CadViewer.HttpHandler
 					}
 				}
 
-				if (converter.Execute())
+				if (await converter.Execute())
 				{
 					//
 					// TODO: the backend could simply stream the result directly to the client here and
@@ -123,7 +125,13 @@ namespace CadViewer.HttpHandler
 					result = new
 					{
 						success = true,
-						completedAction = (converter.OutputFormat?.Equals("svg") ?? false) ? "svg_creation" : "pdf_creation",
+						value = new
+						{
+							method = "pickup",
+							tag = Path.GetFileNameWithoutExtension(output?.Name),
+							type = Util.GetFileExtension(output?.Name)
+						},
+						completedAction = converter.Action,//(converter.OutputFormat?.Equals("svg") ?? false) ? "svg_creation" : "pdf_creation",
 						errorCode = $"E{converter.ExitCode}",
 						converter = "AutoXchange AX2020",
 						version = "V1.00",
@@ -160,7 +168,7 @@ namespace CadViewer.HttpHandler
 			};
 			Util.ToJSON(result, Response.Output);
 		}
-		public bool IsReusable { get => false; }
+		public override bool IsReusable { get => false; }
 
 	}
 }

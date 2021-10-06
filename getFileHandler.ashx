@@ -4,8 +4,4 @@ using System.Web;
 
 public class Handler : CadViewer.HttpHandler.Download
 {
-	public override void ProcessRequest(HttpContext Context)
-	{
-		base.ProcessRequest(Context);
-	}
 }

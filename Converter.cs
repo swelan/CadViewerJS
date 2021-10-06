@@ -35,6 +35,12 @@ namespace CadViewer
 
 		public string OutputFormat { get; set; } = null;
 
+		private string _action = null;
+		/// <summary>
+		/// Can be used to indicate the type of operation to perform
+		/// </summary>
+		public string Action { get => _action; set { _action = value?.Trim().ToLowerInvariant(); } }
+
 		/// <summary>
 		/// Case-insensitive collection for optional command parameters
 		/// </summary>
@@ -102,11 +108,11 @@ namespace CadViewer
 				});
 		}
 
-		public bool Execute(Action<FileInfo, int, Exception> Callback = null)
+		public async Task<bool> Execute(Action<FileInfo, int, Exception> Callback = null)
 		{
 			try
 			{
-				return ExecuteInternal();
+				return await ExecuteInternal();
 			}
 			catch (Exception e)
 			{
@@ -135,7 +141,7 @@ namespace CadViewer
 		/// <param name="Callback"></param>
 		/// <param name="writer"></param>
 		/// <returns></returns>
-		private bool ExecuteInternal()
+		private async Task<bool> ExecuteInternal()
 		{
 			ExitCode = 0;
 			LastError = null;
@@ -155,24 +161,8 @@ namespace CadViewer
 			});
 
 			var executable = new FileInfo(AppConfig.ExecutablePath);
-			if (!executable.Exists) throw new FileNotFoundException("Invalid executable path", executable.FullName);
 
-			var processInfo = new ProcessStartInfo()
-			{
-				FileName = executable.FullName,
-				Arguments = String.Join(" ", parameters),
-				CreateNoWindow = true,
-				UseShellExecute = false,
-				WorkingDirectory = executable.DirectoryName,
-				RedirectStandardError = false,
-				RedirectStandardOutput = false,
-			};
-
-			using (var process = Process.Start(processInfo))
-			{
-				process.WaitForExit();
-				ExitCode = process.ExitCode;
-			}
+			ExitCode = await Util.StartProcessAsync(executable, parameters);
 
 			//
 			// Refresh the output information to reflect its existence
