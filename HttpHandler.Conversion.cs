@@ -128,7 +128,7 @@ namespace CadViewer.HttpHandler
 						value = new
 						{
 							method = "pickup",
-							tag = Path.GetFileNameWithoutExtension(output?.Name),
+							tag = Util.GetFileNameWithoutExtension(output?.Name),
 							type = Util.GetFileExtension(output?.Name)
 						},
 						completedAction = converter.Action,//(converter.OutputFormat?.Equals("svg") ?? false) ? "svg_creation" : "pdf_creation",
@@ -139,7 +139,7 @@ namespace CadViewer.HttpHandler
 						contentLocation = input?.contentLocation ?? Request["url"] ?? Request.Files["file"]?.FileName,
 						contentFormat = input?.contentFormat ?? Request["format"] ?? Util.GetFileExtension(Request.Files["file"]?.FileName),
 						contentResponse = "stream",
-						contentStreamData = $"{Path.Combine(AppConfig.GetUri("CadViewer.HandlerRootUrl")?.ToString(), "getFileHandler.ashx")}?remainOnServer=0&fileTag={HttpUtility.UrlEncode(Path.GetFileNameWithoutExtension(output.Name))}&Type={HttpUtility.UrlEncode(converter.OutputFormat)}"
+						contentStreamData = $"{Path.Combine(AppConfig.GetUri("CadViewer.HandlerRootUrl")?.ToString(), "getFileHandler.ashx")}?remainOnServer=0&fileTag={HttpUtility.UrlEncode(Util.GetFileNameWithoutExtension(output.Name))}&Type={HttpUtility.UrlEncode(converter.OutputFormat)}"
 					};
 				}
 				else

@@ -37,11 +37,11 @@ namespace CadViewer
 			{
 				Source?.CopyTo(target);
 				return true;
-			}
+			}	
 		}
 		public async Task<bool> CreateAsync(Stream Source)
 		{
-			using (var target = new FileStream(PhysicalFile?.FullName, FileMode.Create, FileAccess.Write, FileShare.None))
+			using (var target = new FileStream(PhysicalFile?.FullName, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous))
 			{
 				await Source?.CopyToAsync(target);
 				return true;
@@ -57,11 +57,24 @@ namespace CadViewer
 		}
 		public async Task<bool> AppendAsync(Stream Source)
 		{
-			using (var target = new FileStream(PhysicalFile?.FullName, FileMode.Append, FileAccess.Write, FileShare.None))
+			using (var target = new FileStream(PhysicalFile?.FullName, FileMode.Append, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous))
 			{
 				await Source?.CopyToAsync(target);
 				return true;
 			}
+		}
+
+		public bool Move(string destination)
+		{
+			try
+			{
+				File.Move(PhysicalFile?.FullName, destination);
+				return true;
+			}
+			catch (Exception)
+			{
+			}
+			return false;
 		}
 		public bool Delete()
 		{
@@ -80,6 +93,29 @@ namespace CadViewer
 		{
 			// Delegate to appconfig utility
 			return AppConfig.GetRandomTemporaryFileName(FileExtension);
+		}
+
+		[Obsolete("Used solely for legacy API functions SaveFile|AppendFile")]
+		public static TempFile GetNamedTempFile(string Name)
+		{
+			var tag = $"{new FileInfo(Name).Name}.txt";
+			return GetTempFile(tag, null);
+		}
+		[Obsolete("Used solely for legacy API functions SaveFile|AppendFile")]
+		public static TempFile CreateNamedTempFile(string Content, string Name)
+		{
+			var info = new FileInfo(Name);
+			var name = Path.GetFileNameWithoutExtension(info.Name);
+			var ext = Util.GetFileExtension(info.Name);
+			if (String.IsNullOrEmpty(ext)) ext = "txt";
+			else ext = $"{ext}.txt";
+
+			var file = new TempFile()
+			{
+				PhysicalFile = new FileInfo(Path.Combine(AppConfig.TempFolder, $"{name}.{ext}"))
+			};
+			File.WriteAllText(file.FullName, Content ?? "");
+			return file.Exists(true) ? file : null;
 		}
 		/// <summary>
 		/// Create a temp file from a source data stream
@@ -213,5 +249,38 @@ namespace CadViewer
 				}
 			}
 		}
+
+		/// <summary>
+		/// Physically delete one or more TempFiles
+		/// </summary>
+		/// <param name="items"></param>
+		public static void Delete(params TempFile[] items)
+		{
+			items?.ToList().ForEach(x => x?.Delete());
+		}
+
+		/// <summary>
+		/// Auto-cleanup of the 'Temp' folder. TODO: possibly schedule a task on 'idle' or similar
+		/// </summary>
+		public static void PurgeColdFiles(int OlderThanMinutes = 15)
+		{
+			// Remove any files not accessed for default randomly 15 min
+			System.IO.Directory.GetFiles(AppConfig.TempFolder)
+				.Select(x => new FileInfo(x))
+				.Where(x => x.LastAccessTimeUtc < DateTime.UtcNow.AddMinutes(-OlderThanMinutes))
+				.ToList()
+				.ForEach(x => {
+					try
+					{
+						x.Delete();
+					}
+					catch (Exception)
+					{
+						// Don't care
+					}
+				});
+		}
+
+
 	}
 }

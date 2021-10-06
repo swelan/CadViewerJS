@@ -33,6 +33,11 @@ namespace CadViewer
 			set => Output = String.IsNullOrEmpty(value) ? null : new FileInfo(value);
 		}
 
+		private string _basename = null;
+		/// <summary>
+		/// Allow external modification of the BaseName part of the OutputFilename
+		/// </summary>
+		public string OutputBaseName { get => _basename; set => _basename = Util.GetFileNameWithoutExtension(value).OrDefault(null); }
 		public string OutputFormat { get; set; } = null;
 
 		private string _action = null;
@@ -87,27 +92,10 @@ namespace CadViewer
 		}
 
 		/// <summary>
-		/// Auto-cleanup of the 'Temp' folder. TODO: possibly schedule a task on 'idle' or similar
+		/// Execute the converter, optionally with a callback
 		/// </summary>
-		private void CleanupDumpFolder()
-		{
-			// Remove any files not accessed for randomly 15 min
-			Directory.GetFiles(AppConfig.TempFolder)
-				.Select(x => new FileInfo(x))
-				.Where(x => x.LastAccessTimeUtc < DateTime.UtcNow.AddMinutes(-15))
-				.ToList()
-				.ForEach(x => {
-					try
-					{
-						x.Delete();
-					} 
-					catch (Exception)
-					{
-						// Don't care
-					}
-				});
-		}
-
+		/// <param name="Callback"></param>
+		/// <returns></returns>
 		public async Task<bool> Execute(Action<FileInfo, int, Exception> Callback = null)
 		{
 			try
@@ -145,12 +133,18 @@ namespace CadViewer
 		{
 			ExitCode = 0;
 			LastError = null;
-			CleanupDumpFolder();
+			
+			TempFile.PurgeColdFiles();
 
 			Input?.Refresh();
 			if (!(Input?.Exists ?? false)) throw new FileNotFoundException("Invalid input file", Input?.FullName);
 
-			OutputFileName = TempFile.GetRandomFileName(OutputFormat);
+
+			OutputFileName = TempFile.GetRandomFileName(OutputFormat);// $"{OutputBaseName.OrDefault(TempFile.GetRandomFileName())}.{OutputFormat}";
+			if (!String.IsNullOrWhiteSpace(OutputBaseName))
+			{
+				OutputFileName = Path.Combine(Output.DirectoryName, $"{OutputBaseName}{Output.Extension}");
+			}
 
 			//
 			// Generate a list of command line arguments. Parameter names are validated and values are properly escaped

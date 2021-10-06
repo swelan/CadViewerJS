@@ -60,8 +60,11 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="callApiConversionHandler.ashx" />
-    <None Include="getFileHandler.ashx" />
+    <None Include="Handler Stubs\AppendFileHandler.ashx" />
+    <None Include="Handler Stubs\callApiConversionHandler.ashx" />
+    <None Include="Handler Stubs\getFileHandler.ashx" />
+    <None Include="Handler Stubs\MakeSinglepagePDF.ashx" />
+    <None Include="Handler Stubs\SaveFileHandler.ashx" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

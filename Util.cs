@@ -10,7 +10,17 @@ using Newtonsoft.Json;
 
 namespace CadViewer
 {
-    public static class Util
+	#region StringExtensions
+	public static class StringExtensions
+	{
+		// "Handy empty-string coalescing function"
+		public static string OrDefault(this string v, object @default)
+		{
+			return string.IsNullOrWhiteSpace(v) ? (null == @default ? null : Convert.ToString(@default)) : v;
+		}
+	}
+	#endregion
+	public static class Util
     {
 		public static string ToJSON<T>(T Value)
 		{
@@ -75,6 +85,18 @@ namespace CadViewer
 			if (!String.IsNullOrEmpty(FileName))
 			{
 				return Path.GetExtension(FileName)?.Trim().Trim(new char[] { '.' });
+			}
+			return null;
+		}
+		public static string GetFileNameWithoutExtension(Uri FileName)
+		{
+			return GetFileNameWithoutExtension(FileName.LocalPath);
+		}
+		public static string GetFileNameWithoutExtension(string FileName)
+		{
+			if (!String.IsNullOrEmpty(FileName))
+			{
+				return Path.GetFileNameWithoutExtension(FileName);
 			}
 			return null;
 		}
