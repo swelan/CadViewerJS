@@ -20,6 +20,53 @@ namespace CadViewer
 		}
 	}
 	#endregion
+
+	/*
+	/// <summary>
+	/// TODO: Jeff Atwood's technique for scheduling repeating, simple tasks
+	/// </summary>
+	public static class CacheMaintenance
+	{
+		private static System.Web.Caching.CacheItemRemovedCallback Callback = null;
+		private static int IntervalInSeconds = 0;
+		private static readonly string Key = "CadViewer.CacheMaintenance";
+		public static void SetSchedule(int seconds = 300)
+		{
+			if (seconds <= 0)
+			{
+				// Turn off
+				IntervalInSeconds = 0;
+				System.Web.HttpRuntime.Cache.Remove(Key);
+				return;
+			}
+
+			IntervalInSeconds = seconds;
+			if (null == Callback) Callback = new System.Web.Caching.CacheItemRemovedCallback(CacheItemRemoved);
+			if (null == System.Web.HttpRuntime.Cache.Remove(Key))
+			{
+				System.Web.HttpRuntime.Cache.Insert(
+					key: Key,
+					value: IntervalInSeconds,
+					dependencies: null,
+					absoluteExpiration: DateTime.Now.AddSeconds(IntervalInSeconds),
+					slidingExpiration: System.Web.Caching.Cache.NoSlidingExpiration,
+					priority: System.Web.Caching.CacheItemPriority.NotRemovable,
+					onRemoveCallback: Callback
+				);
+			}
+		}
+		private static void CacheItemRemoved(string key, object value, System.Web.Caching.CacheItemRemovedReason reason)
+		{
+			if (IntervalInSeconds > 0)
+			{
+				TempFile.PurgeColdFiles();
+				TempFile.CreateNamedTempFile($"The time is {DateTime.UtcNow}; interval={Convert.ToInt32(value)}s; reason: {reason}", "cache-maintenance.log");
+				
+				SetSchedule(IntervalInSeconds);
+			}
+		}
+	}
+	*/
 	public static class Util
     {
 		public static string ToJSON<T>(T Value)

@@ -46,8 +46,9 @@
   <ItemGroup>
     <Compile Include="AppConfig.cs" />
     <Compile Include="AuthorizationContext.cs" />
+    <Compile Include="CadViewerConverter.cs" />
     <Compile Include="HttpHandler.Conversion.cs" />
-    <Compile Include="ConversionRequestParameters.cs" />
+    <Compile Include="HttpHandler.ConversionRequestParameters.cs" />
     <Compile Include="Converter.cs" />
     <Compile Include="HttpHandler.Download.cs" />
     <Compile Include="HttpHandler.Legacy.MakeSinglePagePDF.cs" />

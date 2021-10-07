@@ -73,7 +73,7 @@ namespace CadViewer.HttpHandler.Legacy
 				//Response.Write($"../../getFileHandler.ashx?remainOnServer=1&attachment=0&fileTag={HttpUtility.UrlEncode(Util.GetFileNameWithoutExtension(file.PhysicalFile.Name))}&Type={HttpUtility.UrlEncode(Util.GetFileExtension(file.PhysicalFile.Name))}");
 
 				// Invoke conversion to pdf
-				var converter = new Converter()
+				var converter = new CadViewerConverter()
 				{
 					Action = "makesinglepagepdf",
 					InputFileName = png_file.FullName,

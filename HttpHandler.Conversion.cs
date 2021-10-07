@@ -95,7 +95,7 @@ namespace CadViewer.HttpHandler
 				//
 				// Download successful, invoke conversion
 				//
-				var converter = new Converter()
+				var converter = new CadViewerConverter()
 				{
 					Action = input?.action,
 					InputFileName = source.FullName,
