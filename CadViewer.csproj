@@ -50,6 +50,8 @@
     <Compile Include="ConversionRequestParameters.cs" />
     <Compile Include="Converter.cs" />
     <Compile Include="HttpHandler.Download.cs" />
+    <Compile Include="HttpHandler.Legacy.MakeSinglePagePDF.cs" />
+    <Compile Include="HttpHandler.Legacy.SaveOrAppend.cs" />
     <Compile Include="TempFile.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
