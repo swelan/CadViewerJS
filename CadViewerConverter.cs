@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using System.Diagnostics;
 namespace CadViewer
 {
 	// TODO: find out how to typedef across implementation files
@@ -81,8 +81,26 @@ namespace CadViewer
 			});
 
 			var executable = new FileInfo(AppConfig.ExecutablePath);
+			var result = await Util.StartProcessAsync(executable, parameters, 8000, true, true);
 
-			ExitCode = await Util.StartProcessAsync(executable, parameters);
+			ExitCode = result.ExitCode.HasValue ? result.ExitCode.Value : 0;
+
+			if (AppConfig.IsDebug)
+			{
+				File.WriteAllLines(
+					@"C:\temp\CadViewer\cadviewer-output.txt",
+					new string[] {
+					$"[{DateTime.UtcNow}]:",
+					$"{Util.EscapePathComponents(executable.FullName)}",
+					String.Join("\n", parameters),
+					"\nEXITCODE: " + (result.ExitCode.HasValue ? $"{result.ExitCode.Value}" : "null -- the process timed out"),
+					"\n===== STDOUT =====",
+					$"{result.StdOut}",
+					"\n=== STDERR ===",
+					$"{result.StdErr}"
+					}
+				);
+			}
 
 			//
 			// Refresh the output information to reflect its existence

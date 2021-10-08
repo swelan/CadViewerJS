@@ -156,6 +156,20 @@ namespace CadViewer.HttpHandler
 						}
 					};
 				}
+				
+				/*
+				// Testing the office converter:
+				var office = new OfficeConverter()
+				{
+					InputFileName = @"C:\temp\CadViewer\Input\DiscoKalas2.docx",
+					OutputFormat = "pdf"
+				};
+				if (await office.Execute())
+				{
+					File.WriteAllText(@"C:\temp\cadviewer\exitcode.txt", $"{office.ExitCode}");
+				}
+				*/
+				
 			}
 			result = result ?? new
 			{

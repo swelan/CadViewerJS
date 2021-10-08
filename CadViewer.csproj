@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppConfig.cs" />
+    <Compile Include="AsyncProcess.cs" />
     <Compile Include="AuthorizationContext.cs" />
     <Compile Include="CadViewerConverter.cs" />
     <Compile Include="HttpHandler.Conversion.cs" />
@@ -53,6 +54,7 @@
     <Compile Include="HttpHandler.Download.cs" />
     <Compile Include="HttpHandler.Legacy.MakeSinglePagePDF.cs" />
     <Compile Include="HttpHandler.Legacy.SaveOrAppend.cs" />
+    <Compile Include="OfficeConverter.cs" />
     <Compile Include="TempFile.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

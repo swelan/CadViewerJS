@@ -123,6 +123,25 @@ namespace CadViewer
 			return null;
 		}
 
+		/// <summary>
+		/// Assuming a valid path with no invalid path chars, enclose components having whitespace in double-quotes
+		/// </summary>
+		/// <param name="s"></param>
+		/// <returns></returns>
+		public static string EscapePathComponents(string path)
+		{
+			char[] quote = { '"' };
+			return String.Join("\\", path?.Trim(quote).Split(new char[] { '\\', '/' })
+				.Select(x =>
+					x.Trim(quote)						// Normalize if it's already quoted
+					.Any(c => Char.IsWhiteSpace(c)) ? 
+						$"\"{x}\"" :					// If it contains whitespace, escape
+						x								// otherwise return as-is
+				)
+			);
+		}
+
+
 		public static string GetFileExtension(Uri FileName)
 		{
 			return GetFileExtension(FileName.LocalPath);
@@ -224,35 +243,50 @@ namespace CadViewer
 		/// <param name="Executable"></param>
 		/// <param name="Arguments"></param>
 		/// <returns></returns>
-		public static async Task<int> StartProcessAsync(FileInfo Executable, IEnumerable<string> Arguments)
+		public static async Task<AsyncProcess.Result> StartProcessAsync(
+			FileInfo Executable, 
+			IEnumerable<string> Arguments, 
+			int? TimeoutMs = null,
+			bool RedirectStandardOutput = false, 
+			bool RedirectStandardError = false
+		)
 		{
 			if (!(Executable?.Exists ?? false)) throw new FileNotFoundException($"Invalid executable '{Executable?.Name ?? ""}", Executable.FullName);
 
-			var StartInfo = new ProcessStartInfo()
-			{
-				FileName = Executable.FullName,
-				Arguments = String.Join(" ", Arguments ?? new List<string>()),
-				CreateNoWindow = true,
-				UseShellExecute = false,
-				WorkingDirectory = Executable.DirectoryName
-			};
-			return await StartProcessAsync(StartInfo);
+			return await AsyncProcess.StartProcessAsync(
+				new ProcessStartInfo()
+				{	
+					FileName = Executable.FullName,
+					Arguments = String.Join(" ", Arguments ?? new List<string>()),
+					CreateNoWindow = true,
+					UseShellExecute = false,
+					WorkingDirectory = Executable.DirectoryName,
+					RedirectStandardOutput = RedirectStandardOutput,
+					RedirectStandardError = RedirectStandardError
+				},
+				TimeoutMs
+			);
 		}
+		/*
 		/// <summary>
 		/// Convenience method to start a process asynchronously and return its ExitCode
 		/// </summary>
 		/// <param name="StartInfo"></param>
 		/// <returns></returns>
-		public static async Task<int> StartProcessAsync(ProcessStartInfo StartInfo)
+		public static async Task<int> StartProcessAsync(
+			ProcessStartInfo StartInfo, 
+			Action<object, DataReceivedEventArgs> OnOutput = null, 
+			Action<object, DataReceivedEventArgs> OnError = null
+		)
 		{
 			//
 			// TODO: allow output/error redirection by attaching listeners to Output/ErrorDataReceived
 			//
-			StartInfo.RedirectStandardError = false;
-			StartInfo.RedirectStandardOutput = false;
+			StartInfo.RedirectStandardError =  (null != OnError);// false;
+			StartInfo.RedirectStandardOutput = (null != OnOutput);//false;
 			using (var process = new Process { StartInfo = StartInfo, EnableRaisingEvents = true })
 			{
-				return await StartProcessAsync(process).ConfigureAwait(false);
+				return await StartProcessAsync(process, OnOutput, OnError).ConfigureAwait(false);
 			}
 		}
 		/// <summary>
@@ -260,19 +294,28 @@ namespace CadViewer
 		/// </summary>
 		/// <param name="process"></param>
 		/// <returns></returns>
-		public static Task<int> StartProcessAsync(Process process)
+		public static Task<int> StartProcessAsync(
+			Process process, 
+			Action<object, DataReceivedEventArgs> OnOutput = null, 
+			Action<object, DataReceivedEventArgs> OnError = null
+		)
 		{
 			process.EnableRaisingEvents = true;
 			var tcs = new TaskCompletionSource<int>();
 			process.Exited += (object state, EventArgs evt) => tcs.SetResult(process.ExitCode);
+
+			if (null != OnOutput) process.OutputDataReceived += new DataReceivedEventHandler(OnOutput);
+			if (null != OnError) process.ErrorDataReceived += new DataReceivedEventHandler(OnError);
+
 			if (!process.Start())
 			{
 				throw new InvalidOperationException($"Unable to start process {process}");
 			}
 			// If redirection is enabled:
-			//process.BeginOutputReadLine();
-			//process.BeginErrorReadLine();
+			if (process.StartInfo.RedirectStandardOutput) process.BeginOutputReadLine();
+			if (process.StartInfo.RedirectStandardError) process.BeginErrorReadLine();
 			return tcs.Task;
 		}
+		*/
 	}
 }
