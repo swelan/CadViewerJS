@@ -12,9 +12,9 @@ namespace CadViewer
 	/// </summary>
 	public class AppConfig
 	{
-		public static bool IsDebug 
+		public static bool IsDebug
 		{
-			get 
+			get
 			{
 				switch (GetProperty("CadViewer.Debug")?.Trim().ToLowerInvariant())
 				{
@@ -34,7 +34,7 @@ namespace CadViewer
 		public static string LicenseLocation { get => GetLocalPath("CadViewer.LicenseLocation"); }
 		public static string XPathLocation { get => GetLocalPath("CadViewer.XPathLocation"); }
 		public static string FontLocation { get => GetLocalPath("CadViewer.FontLocation"); }
-		
+
 		/// <summary>
 		/// <para>A white-list of domains to allow relay-fetching of content from. To allow fetch from any domain, include '*' in the whitelist configuration.</para>
 		/// <para>A restrictive policy is recommended</para>
@@ -47,6 +47,10 @@ namespace CadViewer
 			}
 		}
 
+
+		public static string LibreOfficeProgramLocation { get => GetUri("CadViewer.LibreOffice.ProgramLocation", UriKind.Absolute).LocalPath; }
+		public static string LibreOfficeExecutable { get => Path.Combine(LibreOfficeProgramLocation, "soffice.com"); }
+		public static Uri LibreOfficeUserEnv { get => GetUri("CadViewer.LibreOffice.Env.UserInstallation", UriKind.Absolute); }
 		/// <summary>
 		/// Get a configuration property as string
 		/// </summary>

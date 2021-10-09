@@ -52,31 +52,32 @@ namespace CadViewer
 			// On first launch, soffice will create a user profile in this folder. This is necessary for the invocation
 			// to function properly. It must be given to the executable as a file uri.
 			//
-			var user_env = AppConfig.GetUri("CadViewer.LibreOffice.Env.UserInstallation", UriKind.Absolute);
+			var user_env = AppConfig.LibreOfficeUserEnv;
 
-			//var home = new DirectoryInfo(user_env.To);
-			//if (!home.Exists) throw new FileNotFoundException("")
 			var parameters = GetExeParameters().Select(x =>
 			{
 				if (null == x.Value) return $"--{x.Key}";
 				if (null == x.Key) return $"\"{Util.EscapeCommandLineParameter(x.Value)}\"";
 				return $"--{x.Key} \"{Util.EscapeCommandLineParameter(x.Value)}\"";
-			}).Append($"-env:UserInstallation={user_env.AbsoluteUri}");
+			}).Append($"-env:UserInstallation=\"{Util.EscapeCommandLineParameter(user_env.AbsoluteUri)}\"");
 
-			var executable = new FileInfo(Path.Combine(AppConfig.GetLocalPath("CadViewer.LibreOffice.ProgramLocation", UriKind.Absolute), "soffice.com"));
+			var executable = new FileInfo(AppConfig.LibreOfficeExecutable);
 			var result = await Util.StartProcessAsync(
 				Executable: executable,
-				Arguments: parameters, 
+				Arguments: parameters,
 				TimeoutMs: 8000,
-				RedirectStandardOutput: true, 
+				RedirectStandardOutput: true,
 				RedirectStandardError: true
 			);
 
+
 			ExitCode = result.ExitCode.HasValue ? result.ExitCode.Value : 0;
 
-			File.WriteAllLines(
-				@"C:\temp\CadViewer\office-output.txt",
-				new string[] {
+			if (AppConfig.IsDebug)
+			{
+				File.WriteAllLines(
+					@"C:\temp\CadViewer\office-output.txt",
+					new string[] {
 					$"[{DateTime.UtcNow}]:",
 					$"{Util.EscapePathComponents(executable.FullName)}",
 					String.Join("\n", parameters),
@@ -85,24 +86,9 @@ namespace CadViewer
 					$"{result.StdOut}",
 					"\n=== STDERR ===",
 					$"{result.StdErr}"
-				}
-			);
-
-			/*
-			File.WriteAllText(@"C:\temp\CadViewer\output.txt", $"[{DateTime.UtcNow}]:\n{Util.EscapePathComponents(executable.FullName)}\n{String.Join("\n", parameters)}\n===============================================\n");
-			void OnOutput(object sender, System.Diagnostics.DataReceivedEventArgs args)
-			{
-				//if (null != args && null != args.Data) sb.AppendLine(args.Data);
-				File.AppendAllText(@"C:\temp\cadviewer\output.txt", $"{args.Data}\n");
+					}
+				);
 			}
-			File.WriteAllText(@"C:\temp\CadViewer\error.txt", $"[{DateTime.UtcNow}]:\n{Util.EscapePathComponents(executable.FullName)}\n{String.Join("\n", parameters)}\n===============================================\n");
-			void OnError(object sender, System.Diagnostics.DataReceivedEventArgs args)
-			{
-				File.AppendAllText(@"C:\temp\cadviewer\error.txt", $"{args.Data}\n");
-			}
-
-			ExitCode = await Util.StartProcessAsync(executable, parameters, OnOutput, OnError);
-			*/
 
 			//
 			// Refresh the output information to reflect its existence
