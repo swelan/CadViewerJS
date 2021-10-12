@@ -76,19 +76,19 @@ namespace CadViewer
 			// Generate a list of command line arguments. Parameter names are validated and values are properly escaped
 			//
 			var parameters = GetExeParameters().Select(x => {
-				if (null == x.Value) return $"-{x.Key}"; // -switch
-				return $"-{x.Key}=\"{Util.EscapeCommandLineParameter(x.Value)}\""; // -key=value
+				if (String.IsNullOrEmpty(x.Value?.ToString())) return $"-{x.Key}"; // -switch
+				return $"-{x.Key}={Util.EscapeCommandLineParameter(x.Value)}"; // -key=value
 			});
 
 			var executable = new FileInfo(AppConfig.ExecutablePath);
-			var result = await Util.StartProcessAsync(executable, parameters, 8000, true, true);
+			var result = await Util.StartProcessAsync(executable, parameters, 8000);
 
 			ExitCode = result.ExitCode.HasValue ? result.ExitCode.Value : 0;
-
+			
 			if (AppConfig.IsDebug)
 			{
 				File.WriteAllLines(
-					@"C:\temp\CadViewer\cadviewer-output.txt",
+					Path.Combine(AppConfig.TempFolder, "cadviewer-output.txt"),
 					new string[] {
 					$"[{DateTime.UtcNow}]:",
 					$"{Util.EscapePathComponents(executable.FullName)}",
@@ -101,7 +101,7 @@ namespace CadViewer
 					}
 				);
 			}
-
+			
 			//
 			// Refresh the output information to reflect its existence
 			//

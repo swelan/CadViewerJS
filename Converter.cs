@@ -61,7 +61,9 @@ namespace CadViewer
 		/// Allow external modification of the BaseName part of the OutputFilename
 		/// </summary>
 		public string OutputBaseName { get => _basename; set => _basename = Util.GetFileNameWithoutExtension(value).OrDefault(null); }
-		public string OutputFormat { get; set; } = null;
+
+		private string _outputformat = null;
+		public string OutputFormat { get => _outputformat; set => _outputformat = value.OrDefault(null); }
 
 		private string _action = null;
 		/// <summary>

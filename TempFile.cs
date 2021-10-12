@@ -251,12 +251,29 @@ namespace CadViewer
 		}
 
 		/// <summary>
-		/// Physically delete one or more TempFiles
+		/// Physically delete one or more TempFiles silently
 		/// </summary>
 		/// <param name="items"></param>
-		public static void Delete(params TempFile[] items)
+		/// <returns>Number of files actually deleted</returns>
+		public static int Delete(params TempFile[] items)
 		{
-			items?.ToList().ForEach(x => x?.Delete());
+			int res = 0;
+			items?.ToList().ForEach(x =>
+			{
+				try
+				{
+					if (null != x)
+					{
+						x.Delete();
+						res++;
+					}
+				}
+				catch (Exception)
+				{
+					// Ignore
+				}
+			});
+			return res;
 		}
 
 		/// <summary>

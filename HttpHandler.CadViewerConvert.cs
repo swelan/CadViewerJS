@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace CadViewer.HttpHandler
 {
-	public class Conversion : HttpTaskAsyncHandler
+	public partial class CadViewerConvert : HttpTaskAsyncHandler
 	{
 		/// <summary>
 		/// Extract the input file from request parameters
@@ -16,7 +16,7 @@ namespace CadViewer.HttpHandler
 		/// <param name="Request"></param>
 		/// <param name="Parameters"></param>
 		/// <returns></returns>
-		private async Task<TempFile> GetInputFile(HttpRequest Request, ConversionRequestParameters Parameters)
+		private async Task<TempFile> GetInputFile(HttpRequest Request, RequestParameters Parameters)
 		{
 			var source_url = (Parameters?.contentLocation ?? Request?["url"])?.Trim();
 			var source_fmt = (Parameters?.contentFormat ?? Request["format"])?.Trim();
@@ -68,30 +68,15 @@ namespace CadViewer.HttpHandler
 			// TODO: The 'request' parameter seems to be ambiguously url-encoded?
 			// The client should send a regular www-form-urlencoded body, or simply the json document as the body
 			//
-			var input = ConversionRequestParameters.FromJSON(HttpUtility.UrlDecode(Request["request"]));
+			var input = RequestParameters.FromJSON(HttpUtility.UrlDecode(Request["request"]));
 
 			TempFile source = null;
+			FileInfo output = null;
 			try
 			{
 				source = await GetInputFile(Request, input);
-			}
-			catch (Exception e)
-			{
-				result = new
-				{
-					success = false,
-					error = new
-					{
-						type = e.GetType().FullName,
-						message = e.Message,
-						source = input?.contentLocation ?? Request["url"] ?? Request.Files["file"]?.FileName,
-						format = input?.contentFormat ?? Request["format"]
-					}
-				};
-			}
+				if (!(source?.PhysicalFile?.Exists ?? false)) throw new FileNotFoundException("Invalid input file");
 
-			if (source?.PhysicalFile?.Exists ?? false)
-			{
 				//
 				// Download successful, invoke conversion
 				//
@@ -121,7 +106,7 @@ namespace CadViewer.HttpHandler
 					// any error information would be propagated via HTTP status messages. This would
 					// yield a simpler and more intuitive interface
 					//
-					var output = converter.Output;
+					output = converter.Output;
 					result = new
 					{
 						success = true,
@@ -129,9 +114,10 @@ namespace CadViewer.HttpHandler
 						{
 							method = "pickup",
 							tag = Util.GetFileNameWithoutExtension(output?.Name),
-							type = Util.GetFileExtension(output?.Name)
+							type = Util.GetFileExtension(output?.Name),
+							url = new Uri(Context.Server.MakeAppRelativePath("./", $"converters/files/{HttpUtility.UrlEncode(output.Name)}"), UriKind.Relative).ToString()
 						},
-						completedAction = converter.Action,//(converter.OutputFormat?.Equals("svg") ?? false) ? "svg_creation" : "pdf_creation",
+						completedAction = converter.Action,
 						errorCode = $"E{converter.ExitCode}",
 						converter = "AutoXchange AX2020",
 						version = "V1.00",
@@ -139,47 +125,29 @@ namespace CadViewer.HttpHandler
 						contentLocation = input?.contentLocation ?? Request["url"] ?? Request.Files["file"]?.FileName,
 						contentFormat = input?.contentFormat ?? Request["format"] ?? Util.GetFileExtension(Request.Files["file"]?.FileName),
 						contentResponse = "stream",
-						contentStreamData = $"{Path.Combine(AppConfig.GetUri("CadViewer.HandlerRootUrl")?.ToString(), "getFileHandler.ashx")}?remainOnServer=0&fileTag={HttpUtility.UrlEncode(Util.GetFileNameWithoutExtension(output.Name))}&Type={HttpUtility.UrlEncode(converter.OutputFormat)}"
+						contentStreamData = $"{Context.Server.MakeAppRelativePath("./", "converters/files")}?remainOnServer=0&fileTag={HttpUtility.UrlEncode(Util.GetFileNameWithoutExtension(output.Name))}&Type={HttpUtility.UrlEncode(converter.OutputFormat)}"
 					};
 				}
 				else
 				{
-					result = new
-					{
-						success = false,
-						error = new
-						{
-							type = converter.LastError?.GetType().FullName,
-							message = converter.LastError?.Message ?? "Unknown error",
-							input = source?.PhysicalFile?.Name,
-							output = converter.Output?.Name
-						}
-					};
+					throw converter.LastError ?? new Exception("Unknown Error");
 				}
-				
-				/*
-				// Testing the office converter:
-				var office = new OfficeConverter()
-				{
-					InputFileName = @"C:\temp\CadViewer\Input\DiscoKalas2.docx",
-					OutputFormat = "pdf"
-				};
-				if (await office.Execute())
-				{
-					File.WriteAllText(@"C:\temp\cadviewer\exitcode.txt", $"{office.ExitCode}");
-				}
-				*/
-				
-			}
-			result = result ?? new
+			} 
+			catch (Exception e)
 			{
-				success = false,
-				error = new
+				result = new
 				{
-					message = $"Invalid input file '{source?.PhysicalFile?.Name ?? "null"}'",
-					input = source?.PhysicalFile?.Name,
-				}
-			};
+					success = false,
+					error = new
+					{
+						type = e.GetType().FullName,
+						message = e.Message ?? "Unknown error",
+						input = source?.PhysicalFile?.Name,
+						output = output?.Name
+					}
+				};
+
+			}
 			Util.ToJSON(result, Response.Output);
 		}
 		public override bool IsReusable { get => false; }

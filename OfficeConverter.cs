@@ -31,6 +31,8 @@ namespace CadViewer
 		/// Return a list of server-supplied parameters and filtered safe parameters from the client
 		/// </summary>
 		/// <returns></returns>
+		///
+		/*
 		private IEnumerable<ConverterParameter> GetExeParameters()
 		{
 			//
@@ -43,6 +45,7 @@ namespace CadViewer
 				.Append(new ConverterParameter("outdir", Output?.DirectoryName))
 				.Append(new ConverterParameter(null, Input?.FullName));
 		}
+		*/
 		protected override async Task<bool> ExecuteInternal()
 		{
 			OutputFileName = Path.Combine(Output.DirectoryName, $"{Util.GetFileNameWithoutExtension(Input.Name)}.pdf");
@@ -52,6 +55,7 @@ namespace CadViewer
 			// On first launch, soffice will create a user profile in this folder. This is necessary for the invocation
 			// to function properly. It must be given to the executable as a file uri.
 			//
+			/*
 			var user_env = AppConfig.LibreOfficeUserEnv;
 
 			var parameters = GetExeParameters().Select(x =>
@@ -60,23 +64,35 @@ namespace CadViewer
 				if (null == x.Key) return $"\"{Util.EscapeCommandLineParameter(x.Value)}\"";
 				return $"--{x.Key} \"{Util.EscapeCommandLineParameter(x.Value)}\"";
 			}).Append($"-env:UserInstallation=\"{Util.EscapeCommandLineParameter(user_env.AbsoluteUri)}\"");
+			*/
+			// USE unoconv:
+			// c:\libreoffice\program\python.exe c:\temp\cadviewer\bin\unoconv --listener
+			// c:\libreoffice\program\python.exe c:\temp\cadviewer\bin\unoconf -f pdf C:\files\mydocument.docx
+			//
 
-			var executable = new FileInfo(AppConfig.LibreOfficeExecutable);
+			var executable = new FileInfo(AppConfig.LibreOfficePythonExecutable);
+			var parameters = new List<string>() {
+				Util.EscapeCommandLineParameter(AppConfig.LibreOfficeUnoconvExecutable),
+				Util.EscapeCommandLineParameter("-f"),
+				Util.EscapeCommandLineParameter(OutputFormat ?? "pdf"),
+				Util.EscapeCommandLineParameter(Input.FullName)
+			};
+
 			var result = await Util.StartProcessAsync(
 				Executable: executable,
 				Arguments: parameters,
 				TimeoutMs: 8000,
-				RedirectStandardOutput: true,
-				RedirectStandardError: true
+				RedirectStandardOutput: false,
+				RedirectStandardError: false
 			);
-
 
 			ExitCode = result.ExitCode.HasValue ? result.ExitCode.Value : 0;
 
+			
 			if (AppConfig.IsDebug)
 			{
 				File.WriteAllLines(
-					@"C:\temp\CadViewer\office-output.txt",
+					Path.Combine(AppConfig.TempFolder, "office-output.txt"),
 					new string[] {
 					$"[{DateTime.UtcNow}]:",
 					$"{Util.EscapePathComponents(executable.FullName)}",
@@ -89,7 +105,7 @@ namespace CadViewer
 					}
 				);
 			}
-
+			
 			//
 			// Refresh the output information to reflect its existence
 			//

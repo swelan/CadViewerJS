@@ -48,12 +48,14 @@
     <Compile Include="AsyncProcess.cs" />
     <Compile Include="AuthorizationContext.cs" />
     <Compile Include="CadViewerConverter.cs" />
-    <Compile Include="HttpHandler.Conversion.cs" />
-    <Compile Include="HttpHandler.ConversionRequestParameters.cs" />
+    <Compile Include="HttpHandler.CadViewerConvert.cs" />
+    <Compile Include="HttpHandler.CadViewerConvert.RequestParameters.cs" />
     <Compile Include="Converter.cs" />
     <Compile Include="HttpHandler.Download.cs" />
+    <Compile Include="HttpHandler.Legacy.Load.cs" />
     <Compile Include="HttpHandler.Legacy.MakeSinglePagePDF.cs" />
     <Compile Include="HttpHandler.Legacy.SaveOrAppend.cs" />
+    <Compile Include="HttpHandler.OfficeConvert.cs" />
     <Compile Include="OfficeConverter.cs" />
     <Compile Include="TempFile.cs" />
     <Compile Include="Util.cs" />
@@ -68,7 +70,9 @@
     <None Include="Handler Stubs\AppendFileHandler.ashx" />
     <None Include="Handler Stubs\callApiConversionHandler.ashx" />
     <None Include="Handler Stubs\getFileHandler.ashx" />
+    <None Include="Handler Stubs\LoadHandler.ashx" />
     <None Include="Handler Stubs\MakeSinglepagePDF.ashx" />
+    <None Include="Handler Stubs\OfficeConvert.ashx" />
     <None Include="Handler Stubs\SaveFileHandler.ashx" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

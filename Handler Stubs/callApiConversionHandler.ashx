@@ -1,5 +1,5 @@
 ﻿<%@ WebHandler Language="C#" Class="Handler" %>
 
-public class Handler : CadViewer.HttpHandler.Conversion
+public class Handler : CadViewer.HttpHandler.CadViewerConvert
 {
 }

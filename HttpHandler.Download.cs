@@ -26,10 +26,13 @@ namespace CadViewer.HttpHandler
 			Response.ContentType = "application/octet-stream";
 
 			TempFile file = null;
-			var tag = Request["fileTag"]?.Trim().OrDefault(null);
-			var typ = Request["Type"]?.Trim().OrDefault(null);
-			Int32.TryParse(Request["remainOnServer"], out int remainOnServer);
-			Int32.TryParse(Request["attachment"], out int attachment);
+			var tag = Request.QueryString["tag"].OrDefault(Request.QueryString["fileTag"]).OrDefault(null)?.Trim();
+			var typ = Request.QueryString["type"].OrDefault(Request.QueryString["Type"]).OrDefault(null)?.Trim();
+			if (!Int32.TryParse(Request.QueryString["keep"], out int remainOnServer))
+			{
+				Int32.TryParse(Request.QueryString["remainOnServer"], out remainOnServer);
+			}
+			Int32.TryParse(Request.QueryString["attachment"], out int attachment);
 			try
 			{
 				//
@@ -43,9 +46,8 @@ namespace CadViewer.HttpHandler
 				// The Win32-api has a separate method 'GetMimeTypeFromData(...)'
 				// Only mime types actually registered with the server are returned correctly, however.
 				//
-				var mime = MimeMapping.GetMimeMapping(file.FullName);
-				if (!String.IsNullOrWhiteSpace(mime)) Response.ContentType = mime;
-
+				Response.ContentType = MimeMapping.GetMimeMapping(file.FullName).OrDefault("application/octet-stream");
+				//if ("svg".Equals(Util.GetFileExtension(file.PhysicalFile.Name), StringComparison.OrdinalIgnoreCase)) Response.ContentType = "text/xml";
 				//
 				// Indicate file name
 				// TODO: supply the name part via parameters
@@ -66,6 +68,8 @@ namespace CadViewer.HttpHandler
 				// In this implementation: If the file is requested to be purged, the 'finally'-block below will flush the Response stream, 
 				// which I guess forces the file to be written immediately in sync mode.?
 				//
+				//Response.Filter = new System.IO.Compression.GZipStream(Response.Filter, System.IO.Compression.CompressionMode.Compress);
+				//Response.AddHeader("Content-Encoding", "gzip");
 				Response.TransmitFile(file.FullName);
 			}
 			catch (FileNotFoundException e)

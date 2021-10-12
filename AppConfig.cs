@@ -51,6 +51,10 @@ namespace CadViewer
 		public static string LibreOfficeProgramLocation { get => GetUri("CadViewer.LibreOffice.ProgramLocation", UriKind.Absolute).LocalPath; }
 		public static string LibreOfficeExecutable { get => Path.Combine(LibreOfficeProgramLocation, "soffice.com"); }
 		public static Uri LibreOfficeUserEnv { get => GetUri("CadViewer.LibreOffice.Env.UserInstallation", UriKind.Absolute); }
+
+		public static string LibreOfficePythonExecutable { get => Path.Combine(LibreOfficeProgramLocation, "python.exe"); }
+		public static string LibreOfficeUnoconvPath { get => GetUri("CadViewer.LibreOffice.UnoconvPath", UriKind.Absolute).LocalPath; }
+		public static string LibreOfficeUnoconvExecutable { get => Path.Combine(LibreOfficeUnoconvPath, "unoconv"); }
 		/// <summary>
 		/// Get a configuration property as string
 		/// </summary>

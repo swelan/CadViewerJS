@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Web;
 using System.IO;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -17,6 +18,32 @@ namespace CadViewer
 		public static string OrDefault(this string v, object @default)
 		{
 			return string.IsNullOrWhiteSpace(v) ? (null == @default ? null : Convert.ToString(@default)) : v;
+		}
+	}
+	#endregion
+
+	#region HttpServerUtlityExtensions
+	public static class HttpServerUtilityExtensions
+	{
+		public static Uri MakeAppRelativeUri(this HttpServerUtility server, string from_relative = "./", string to_relative = "./")
+		{
+			from_relative = from_relative?.TrimStart(new char[] { '/', '\\' }).Replace('\\', '/');
+			to_relative = to_relative?.TrimStart(new char[] { '/', '\\' }).Replace('\\', '/');
+
+			if (Path.IsPathRooted(from_relative)) throw new ArgumentOutOfRangeException("from_relative", "Invalid relative path specification");
+			if (Path.IsPathRooted(to_relative)) throw new ArgumentOutOfRangeException("to_relative","Invalid relative path specification");
+
+			var app_root = new Uri(server.MapPath("~/"), UriKind.Absolute);
+			var from_absolute = new Uri(server.MapPath(from_relative), UriKind.Absolute);
+			var to_absolute = new Uri(from_absolute, to_relative);
+
+			if (!from_absolute.IsBaseOf(to_absolute)) throw new ArgumentOutOfRangeException("to_relative", "The from_relative path must be a base of to_relative");
+
+			return app_root.MakeRelativeUri(to_absolute);
+		}
+		public static string MakeAppRelativePath(this HttpServerUtility server, string from_relative = "./", string to_relative = "./")
+		{
+			return $"/{server.MakeAppRelativeUri(from_relative, to_relative).ToString()}";
 		}
 	}
 	#endregion
@@ -112,6 +139,63 @@ namespace CadViewer
 
 		public static string EscapeCommandLineParameter(object v)
 		{
+			string argument = v?.ToString();
+			if (null != argument)
+			{
+				// Short circuit if argument is clean and doesn't need escaping
+				if (argument.Length != 0 && argument.All(c => !char.IsWhiteSpace(c) && c != '"'))
+					return argument;
+
+				var buffer = new StringBuilder();
+
+				buffer.Append('"');
+
+				for (var i = 0; i < argument.Length;)
+				{
+					var c = argument[i++];
+
+					if (c == '\\')
+					{
+						var numBackSlash = 1;
+						while (i < argument.Length && argument[i] == '\\')
+						{
+							numBackSlash++;
+							i++;
+						}
+
+						if (i == argument.Length)
+						{
+							buffer.Append('\\', numBackSlash * 2);
+						}
+						else if (argument[i] == '"')
+						{
+							buffer.Append('\\', numBackSlash * 2 + 1);
+							buffer.Append('"');
+							i++;
+						}
+						else
+						{
+							buffer.Append('\\', numBackSlash);
+						}
+					}
+					else if (c == '"')
+					{
+						buffer.Append('\\');
+						buffer.Append('"');
+					}
+					else
+					{
+						buffer.Append(c);
+					}
+				}
+
+				buffer.Append('"');
+
+				return buffer.ToString();
+			}
+			return null;
+			/*
+
 			if (null != v)
 			{
 				//
@@ -121,6 +205,7 @@ namespace CadViewer
 				return Regex.Replace(Regex.Replace(v.ToString(), @"(\\*)" + "\"", @"$1$1\" + "\""), @"(\\+)$", @"$1$1");
 			}
 			return null;
+			*/
 		}
 
 		/// <summary>
@@ -141,14 +226,25 @@ namespace CadViewer
 			);
 		}
 
-
+		public static string GetFileName(Uri FileName)
+		{
+			return GetFileName(FileName.LocalPath);
+		}
+		public static string GetFileName(string FileName)
+		{
+			if (!String.IsNullOrWhiteSpace(FileName))
+			{
+				return Path.GetFileName(FileName.Trim());
+			}
+			return null;
+		}
 		public static string GetFileExtension(Uri FileName)
 		{
 			return GetFileExtension(FileName.LocalPath);
 		}
 		public static string GetFileExtension(string FileName)
 		{
-			if (!String.IsNullOrEmpty(FileName))
+			if (!String.IsNullOrWhiteSpace(FileName))
 			{
 				return Path.GetExtension(FileName)?.Trim().Trim(new char[] { '.' });
 			}
@@ -160,9 +256,9 @@ namespace CadViewer
 		}
 		public static string GetFileNameWithoutExtension(string FileName)
 		{
-			if (!String.IsNullOrEmpty(FileName))
+			if (!String.IsNullOrWhiteSpace(FileName))
 			{
-				return Path.GetFileNameWithoutExtension(FileName);
+				return Path.GetFileNameWithoutExtension(FileName.Trim());
 			}
 			return null;
 		}
