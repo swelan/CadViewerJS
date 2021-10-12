@@ -65,6 +65,7 @@ namespace CadViewer.HttpHandler
 
 			FileInfo output = null;
 			TempFile source = null;
+			int ExitCode = 0;
 			try
 			{
 				source = await GetInputFile(Request);
@@ -94,7 +95,8 @@ namespace CadViewer.HttpHandler
 				}
 				else
 				{
-					throw converter.LastError ?? new Exception("Unknown error");
+					ExitCode = converter.ExitCode;
+					throw converter.LastError ?? new Exception($"Unknown error");
 				}
 			}
 			catch (Exception e)
@@ -106,7 +108,8 @@ namespace CadViewer.HttpHandler
 					error = new
 					{
 						type = e.GetType().FullName,
-						message = e.Message
+						message = e.Message,
+						exitcode = ExitCode
 					}
 				};
 			}

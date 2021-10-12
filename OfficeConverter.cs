@@ -82,11 +82,11 @@ namespace CadViewer
 				Executable: executable,
 				Arguments: parameters,
 				TimeoutMs: 8000,
-				RedirectStandardOutput: false,
-				RedirectStandardError: false
+				RedirectStandardOutput: AppConfig.IsDebug,
+				RedirectStandardError: AppConfig.IsDebug
 			);
 
-			ExitCode = result.ExitCode.HasValue ? result.ExitCode.Value : 0;
+			if (result.ExitCode.HasValue) ExitCode = result.ExitCode.Value;
 
 			
 			if (AppConfig.IsDebug)
