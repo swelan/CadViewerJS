@@ -23,7 +23,7 @@ namespace CadViewer.HttpHandler.Legacy
 				// Allow retrieval of documents located in descendant folders only
 				// MakeAppRelativePath throws ArgumentOutOfRange if "to_relative" refers to anything above "./"
 				//
-				var path = Server.MapPath(Server.MakeAppRelativePath("./", filename));
+				var path = Server.MapPath("~" + Server.MakeAppRelativePath("./", filename));
 				Response.ContentType = "text/plain";
 				Response.Charset = "UTF-8";
 				Response.TransmitFile(path);//.LocalPath);

@@ -68,12 +68,13 @@ namespace CadViewer.HttpHandler
 			// TODO: The 'request' parameter seems to be ambiguously url-encoded?
 			// The client should send a regular www-form-urlencoded body, or simply the json document as the body
 			//
-			var input = RequestParameters.FromJSON(HttpUtility.UrlDecode(Request["request"]));
 
 			TempFile source = null;
 			FileInfo output = null;
 			try
 			{
+				var input = RequestParameters.FromJSON(HttpUtility.UrlDecode(Request["request"]));
+
 				source = await GetInputFile(Request, input);
 				if (!(source?.PhysicalFile?.Exists ?? false)) throw new FileNotFoundException("Invalid input file");
 
