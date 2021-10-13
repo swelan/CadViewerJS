@@ -81,9 +81,15 @@ namespace CadViewer
 			});
 
 			var executable = new FileInfo(AppConfig.ExecutablePath);
-			var result = await Util.StartProcessAsync(executable, parameters, 8000);
+			var result = await Util.StartProcessAsync(
+				Executable: executable, 
+				Arguments: parameters, 
+				TimeoutMs: AppConfig.ExecutableTimeoutMs,
+				RedirectStandardOutput: AppConfig.IsDebug,
+				RedirectStandardError: AppConfig.IsDebug
+			);
 
-			ExitCode = result.ExitCode.HasValue ? result.ExitCode.Value : 0;
+			if (result.ExitCode.HasValue) ExitCode = result.ExitCode.Value;
 			
 			if (AppConfig.IsDebug)
 			{

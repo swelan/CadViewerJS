@@ -87,7 +87,7 @@ namespace CadViewer
 		/// <returns></returns>
 		public async Task<bool> Execute(ConverterCallback Callback = null)
 		{
-			ExitCode = 0;
+			ExitCode = -1;
 			LastError = null;
 
 			try

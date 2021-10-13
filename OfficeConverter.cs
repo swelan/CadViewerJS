@@ -81,7 +81,7 @@ namespace CadViewer
 			var result = await Util.StartProcessAsync(
 				Executable: executable,
 				Arguments: parameters,
-				TimeoutMs: 8000,
+				TimeoutMs: AppConfig.ExecutableTimeoutMs,
 				RedirectStandardOutput: AppConfig.IsDebug,
 				RedirectStandardError: AppConfig.IsDebug
 			);

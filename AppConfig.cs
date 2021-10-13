@@ -36,6 +36,20 @@ namespace CadViewer
 		public static string FontLocation { get => GetLocalPath("CadViewer.FontLocation"); }
 
 		/// <summary>
+		/// Make exe timeout configurable; -1 => null, 0 => default
+		/// </summary>
+		public static int? ExecutableTimeoutMs 
+		{ 
+			get
+			{
+				int result = 0;
+				Int32.TryParse(GetProperty("CadViewer.ExecutableTimeoutMs"), out result);
+				if (result < 0) return null;
+				if (result == 0) return 10000;
+				return result;
+			} 
+		}
+		/// <summary>
 		/// <para>A white-list of domains to allow relay-fetching of content from. To allow fetch from any domain, include '*' in the whitelist configuration.</para>
 		/// <para>A restrictive policy is recommended</para>
 		/// </summary>
