@@ -27,13 +27,16 @@ namespace CadViewer
 				}
 			}
 		}
-		public static string ConverterLocation { get => GetLocalPath("CadViewer.ConverterLocation", UriKind.Absolute); }
-		public static string Executable { get => Path.GetFileName(GetProperty("CadViewer.Executable")); }
-		public static string ExecutablePath { get => Path.Combine(ConverterLocation, Executable ?? ""); }
 		public static string TempFolder { get => GetLocalPath("CadViewer.TempFolder", UriKind.Absolute); }
-		public static string LicenseLocation { get => GetLocalPath("CadViewer.LicenseLocation"); }
-		public static string XPathLocation { get => GetLocalPath("CadViewer.XPathLocation"); }
-		public static string FontLocation { get => GetLocalPath("CadViewer.FontLocation"); }
+		public static string ConverterLocation { get => GetLocalPath("CadViewer.ConverterLocation", UriKind.Absolute); }
+
+
+		public static string CVJS_ProgramLocation { get => GetLocalPath("CadViewer.CVJS.ProgramLocation"); }
+		public static string CVJS_Executable { get => Path.GetFileName(GetProperty("CadViewer.CVJS.Executable")); }
+		public static string CVJS_ExecutablePath { get => Path.Combine(CVJS_ProgramLocation, CVJS_Executable ?? ""); }
+		public static string CVJS_LicenseLocation { get => GetLocalPath("CadViewer.CVJS.LicenseLocation", UriKind.RelativeOrAbsolute, CVJS_ProgramLocation); }
+		public static string CVJS_XPathLocation { get => GetLocalPath("CadViewer.CVJS.XPathLocation", UriKind.RelativeOrAbsolute, CVJS_ProgramLocation); }
+		public static string CVJS_FontLocation { get => GetLocalPath("CadViewer.CVJS.FontLocation", UriKind.RelativeOrAbsolute, CVJS_ProgramLocation); }
 
 		/// <summary>
 		/// Make exe timeout configurable; -1 => null, 0 => default
@@ -62,13 +65,51 @@ namespace CadViewer
 		}
 
 
-		public static string LibreOfficeProgramLocation { get => GetUri("CadViewer.LibreOffice.ProgramLocation", UriKind.Absolute).LocalPath; }
-		public static string LibreOfficeExecutable { get => Path.Combine(LibreOfficeProgramLocation, "soffice.com"); }
-		public static Uri LibreOfficeUserEnv { get => GetUri("CadViewer.LibreOffice.Env.UserInstallation", UriKind.Absolute); }
+		public static string LibreOfficeProgramLocation
+		{
+			get
+			{
+				var res = GetUri("CadViewer.LibreOffice.ProgramLocation", UriKind.Absolute)?.LocalPath;
+				if (String.IsNullOrWhiteSpace(res) || !Path.IsPathRooted(res) || !Directory.Exists(res))
+				{
+					//
+					// Make sure the correct hive is selected (if the app is running in 32-bit mode)
+					// 
+					res = Util.ReadRegistryKey(
+						Path: "Software\\LibreOffice\\UNO\\InstallPath",
+						Hive: Microsoft.Win32.RegistryHive.LocalMachine,
+						Bitness: Microsoft.Win32.RegistryView.Registry64,
+						Callback: key =>
+						{
+							//
+							// value names are on the form "LibreOffice 7.2"
+							// Select the value of the highest version
+							//
+							var value_name = key?.GetValueNames()
+								.Where(x => x.StartsWith("LibreOffice", StringComparison.OrdinalIgnoreCase))
+								.OrderBy(x =>
+									{
+										Version.TryParse(x.Substring("LibreOffice".Length).Trim(), out Version ver);
+										return ver;
+									}
+								)
+								.LastOrDefault();
+
+							return key?.GetValue(value_name)?.ToString();
+						}
+					);
+				}
+				return Directory.Exists(res) && Path.IsPathRooted(res) ? res : null;
+			}
+		}
+
+		//public static string LibreOfficeExecutable { get => Path.Combine(LibreOfficeProgramLocation, "soffice.com"); }
+		//public static Uri LibreOfficeUserEnv { get => GetUri("CadViewer.LibreOffice.Env.UserInstallation", UriKind.Absolute); }
 
 		public static string LibreOfficePythonExecutable { get => Path.Combine(LibreOfficeProgramLocation, "python.exe"); }
-		public static string LibreOfficeUnoconvPath { get => GetUri("CadViewer.LibreOffice.UnoconvPath", UriKind.Absolute).LocalPath; }
-		public static string LibreOfficeUnoconvExecutable { get => Path.Combine(LibreOfficeUnoconvPath, "unoconv"); }
+		public static string LibreOfficeUnoconvLocation { get => GetLocalPath("CadViewer.LibreOffice.UnoconvLocation");  }
+		public static string LibreOfficeUnoconvExecutable { get => Path.Combine(LibreOfficeUnoconvLocation, "unoconv"); }
+
 		/// <summary>
 		/// Get a configuration property as string
 		/// </summary>
@@ -86,7 +127,7 @@ namespace CadViewer
 		/// <param name="Index">Configuration property</param>
 		/// <param name="Kind">Determines whether the returned path may be ConverterLocation-relative or not</param>
 		/// <returns></returns>
-		public static string GetLocalPath(string Index, UriKind Kind = UriKind.RelativeOrAbsolute)
+		public static string GetLocalPath(string Index, UriKind Kind = UriKind.RelativeOrAbsolute, string RelativeTo = null)
 		{
 			var v = GetUri(Index, Kind);
 			if (v?.IsAbsoluteUri ?? false)
@@ -99,7 +140,12 @@ namespace CadViewer
 				throw new Exception($"AppConfig:'{Index}' must be a valid, absolute path");
 			}
 
-			return new Uri(GetUri("CadViewer.ConverterLocation", UriKind.Absolute), v ?? new Uri(".", UriKind.Relative)).LocalPath.TrimEnd(new char[] { '/', '\\' });
+			Uri base_uri = (
+				String.IsNullOrEmpty(RelativeTo) ? 
+					GetUri("CadViewer.ConverterLocation", UriKind.Absolute) : 
+					new Uri(RelativeTo + "/", UriKind.Absolute)
+			);
+			return new Uri(base_uri, v ?? new Uri(".", UriKind.Relative)).LocalPath.TrimEnd(new char[] { '/', '\\' });
 		}
 
 		/// <summary>
@@ -111,7 +157,12 @@ namespace CadViewer
 		public static Uri GetUri(string Index, UriKind Kind = UriKind.RelativeOrAbsolute)
 		{
 			var v = GetProperty(Index)?.TrimEnd(new char[] { '\\', '/' });
+			if (UriKind.Relative == Kind || UriKind.RelativeOrAbsolute == Kind)
+			{
+				v = v?.TrimStart(new char[] { '\\', '/' });
+			}
 			if (String.IsNullOrEmpty(v)) return null;
+
 			return new Uri(v + "/", Kind);
 		}
 		public static string GetRandomTemporaryFileName(string FileExtension = null)

@@ -413,5 +413,32 @@ namespace CadViewer
 			return tcs.Task;
 		}
 		*/
+		/// <summary>
+		/// Open a Win32 registry key and yield the value from invoking the callback on that key.
+		/// If the platform is not windows, null is always passed to the reviver
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="Path">Registry path</param>
+		/// <param name="Callback">Reviver for the requested key</param>
+		/// <param name="Hive">Requested hive or default LocalMachine</param>
+		/// <param name="Bitness">Search a particluar hive view, or default view determined by runtime bitness of assembly</param>
+		/// <returns></returns>
+		public static T ReadRegistryKey<T>(
+			string Path, 
+			Func<Microsoft.Win32.RegistryKey, T> Callback,
+			Microsoft.Win32.RegistryHive Hive = Microsoft.Win32.RegistryHive.LocalMachine,
+			Microsoft.Win32.RegistryView Bitness = Microsoft.Win32.RegistryView.Default
+		)
+		{
+			if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+			{
+				using (var base_key = Microsoft.Win32.RegistryKey.OpenBaseKey(Hive, Bitness))
+				using (var key = base_key?.OpenSubKey(Path))
+				{
+					return Callback.Invoke(key);
+				}
+			}
+			return Callback.Invoke(null);
+		}
 	}
 }

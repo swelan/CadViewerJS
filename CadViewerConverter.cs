@@ -57,9 +57,9 @@ namespace CadViewer
 				.Append(new ConverterParameter("i", Input?.FullName ?? ""))
 				.Append(new ConverterParameter("o", Output?.FullName ?? ""))
 				.Append(new ConverterParameter("f", OutputFormat ?? "pdf"))
-				.Append(new ConverterParameter("lpath", AppConfig.LicenseLocation))
-				.Append(new ConverterParameter("xpath", AppConfig.XPathLocation))
-				.Append(new ConverterParameter("fpath", AppConfig.FontLocation))
+				.Append(new ConverterParameter("lpath", AppConfig.CVJS_LicenseLocation))
+				.Append(new ConverterParameter("xpath", AppConfig.CVJS_XPathLocation))
+				.Append(new ConverterParameter("fpath", AppConfig.CVJS_FontLocation))
 				.Concat(Parameters.Where(x => IsValidParameter(x.Key)));
 		}
 
@@ -80,7 +80,7 @@ namespace CadViewer
 				return $"-{x.Key}={Util.EscapeCommandLineParameter(x.Value)}"; // -key=value
 			});
 
-			var executable = new FileInfo(AppConfig.ExecutablePath);
+			var executable = new FileInfo(AppConfig.CVJS_ExecutablePath);
 			var result = await Util.StartProcessAsync(
 				Executable: executable, 
 				Arguments: parameters, 
