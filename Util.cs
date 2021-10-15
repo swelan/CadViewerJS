@@ -11,6 +11,24 @@ using Newtonsoft.Json;
 
 namespace CadViewer
 {
+	#region AppExceptions
+	public class PayloadTooLargeException : System.Exception
+	{
+		public PayloadTooLargeException(string Message, Int64 Size, Int64 MaxSize, Exception InnerException = null)
+			: base(Message, InnerException)
+		{
+			this.Size = Size;
+			this.MaxSize = MaxSize;
+		}
+		public PayloadTooLargeException(Int64 Size, Int64 MaxSize, Exception InnerException = null)
+			: this($"The file size exceeds the maximum allowed value ({((decimal)MaxSize / 1048576).ToString("0.##")} MB)", Size, MaxSize, InnerException)
+		{
+		}
+
+		public Int64 Size { get; set; } = 0;
+		public Int64 MaxSize { get; set; } = 0;
+	}
+	#endregion
 	#region StringExtensions
 	public static class StringExtensions
 	{
@@ -47,7 +65,19 @@ namespace CadViewer
 		}
 	}
 	#endregion
-
+	#region UriExtensions
+	public static class UriExtensions
+	{
+		public static bool DomainMatchesWildcard(this Uri uri, IEnumerable<string> Wildcard)
+		{
+			if (uri?.IsAbsoluteUri ?? false)
+			{
+				return Util.DomainMatchesWildcard(uri?.DnsSafeHost, Wildcard);
+			}
+			return false;
+		}
+	}
+	#endregion
 	/*
 	/// <summary>
 	/// TODO: Jeff Atwood's technique for scheduling repeating, simple tasks
@@ -439,6 +469,24 @@ namespace CadViewer
 				}
 			}
 			return Callback.Invoke(null);
+		}
+
+		public class WebClientEx : System.Net.WebClient
+		{
+			public WebClientEx(string Method = null)
+			{
+				this.Method = Method;
+			}
+			public string Method { get; set; } = null;
+			protected override System.Net.WebRequest GetWebRequest(Uri uri)
+			{
+				var request = base.GetWebRequest(uri);
+				if (!String.IsNullOrWhiteSpace(Method))
+				{
+					request.Method = Method;
+				}
+				return request;
+			}
 		}
 	}
 }

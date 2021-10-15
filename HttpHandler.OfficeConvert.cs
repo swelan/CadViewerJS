@@ -43,6 +43,11 @@ namespace CadViewer.HttpHandler
 			var file = Request.Files["file"] ?? (Request.Files.Count > 0 ? Request.Files[0] : null);
 			if (null != file)
 			{
+				long max_size = AppConfig.MaxFileSize;
+				if (max_size > 0 && file.InputStream.Length > max_size)
+				{
+					throw new PayloadTooLargeException(file.InputStream.Length, max_size);
+				}
 				using (var stream = file.InputStream)
 				{
 					return await TempFile.CreateTempFileAsync(stream, source_fmt ?? Util.GetFileExtension(file.FileName));
@@ -66,6 +71,8 @@ namespace CadViewer.HttpHandler
 			FileInfo output = null;
 			TempFile source = null;
 			int ExitCode = 0;
+			Exception error = null; // Save this to produce informative HTTP status codes when compiling the response
+
 			try
 			{
 				source = await GetInputFile(Request);
@@ -90,7 +97,8 @@ namespace CadViewer.HttpHandler
 							tag = Util.GetFileNameWithoutExtension(output.Name),
 							type = Util.GetFileExtension(output.Name),
 							url = new Uri(Context.Server.MakeAppRelativePath("./", $"converters/files/{HttpUtility.UrlEncode(output.Name)}"), UriKind.Relative).ToString()
-						}
+						},
+						error = (object)null
 					};
 				}
 				else
@@ -101,6 +109,7 @@ namespace CadViewer.HttpHandler
 			}
 			catch (Exception e)
 			{
+				error = e;
 				result = new
 				{
 					success = false,
@@ -162,7 +171,15 @@ namespace CadViewer.HttpHandler
 					//
 					Response.ContentType = "application/json";
 					Response.Charset = "UTF-8";
-					Response.Status = "404 File Not Found";
+					Response.Status = new Func<Exception, string>((err) => {
+						if (err is PayloadTooLargeException)
+						{
+							Response.AddHeader("DCS-Max-Converter-FileSize", ((PayloadTooLargeException)err).MaxSize.ToString());
+							Response.AddHeader("DCS-Converter-FileSize", ((PayloadTooLargeException)err).Size.ToString());
+							return "413 Payload Too Large";
+						}
+						return "404 File Not Found";
+					})(error);
 					Util.ToJSON(result, Response.Output);
 				}
 			}

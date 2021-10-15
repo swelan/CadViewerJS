@@ -63,7 +63,17 @@ namespace CadViewer
 				return GetProperty("CadViewer.DomainWhitelist")?.Split(',').Select(v => v?.Trim().ToLowerInvariant()).Where(v => !String.IsNullOrEmpty(v)).ToList() ?? new List<string>();
 			}
 		}
-
+		/// <summary>
+		/// Maximum file size allowed as input to conversion, to avoid ridiculously large files
+		/// </summary>
+		public static Int64 MaxFileSize
+		{
+			get
+			{
+				Int64.TryParse(GetProperty("CadViewer.MaxFileSize"), out Int64 max_size);
+				return max_size > 0 ? max_size : 0;
+			}
+		}
 
 		public static string LibreOfficeProgramLocation
 		{

@@ -117,6 +117,11 @@ namespace CadViewer
 			File.WriteAllText(file.FullName, Content ?? "");
 			return file.Exists(true) ? file : null;
 		}
+
+		public static TempFile Touch(string FileExtension = null)
+		{
+			return CreateTempFile(null, FileExtension);
+		}
 		/// <summary>
 		/// Create a temp file from a source data stream
 		/// </summary>
@@ -190,6 +195,49 @@ namespace CadViewer
 		}
 
 		/// <summary>
+		/// Internal skeleton to orchestrate authenticated requests using a specific verb and callback
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="Source"></param>
+		/// <param name="AuthContext"></param>
+		/// <param name="Method"></param>
+		/// <param name="Callback"></param>
+		/// <returns></returns>
+		private static async Task<T> IssueWebRequest<T>(
+			Uri Source, 
+			AuthorizationContext AuthContext, 
+			string Method, 
+			Func<System.Net.WebClient, Task<T>> Callback
+		)
+		{
+			using (var xhr = new Util.WebClientEx())
+			{
+				if (!String.IsNullOrWhiteSpace(Method)) xhr.Method = Method;
+
+				if (null != AuthContext)
+				{
+					foreach (var header in AuthContext.ToHttpHeaders())
+					{
+						xhr.Headers.Add(header.Key, header.Value);
+					}
+				}
+
+				try
+				{
+					System.Net.ServicePointManager.ServerCertificateValidationCallback += ServerCertificateValidator;
+					return await Callback.Invoke(xhr);
+				}
+				catch (Exception)
+				{
+				}
+				finally
+				{
+					System.Net.ServicePointManager.ServerCertificateValidationCallback -= ServerCertificateValidator;
+				}
+			}
+			return default;
+		}
+		/// <summary>
 		/// Download a file from a whitelisted source url using the provided AuthorizationContext
 		/// </summary>
 		/// <param name="Source">Url to query</param>
@@ -201,53 +249,73 @@ namespace CadViewer
 			//
 			// Require TLS connection, unless we're in debug mode
 			//
-			if (!"https".Equals(Source?.Scheme, StringComparison.OrdinalIgnoreCase) && !AppConfig.IsDebug) throw new ArgumentException("TLS connection is required", "Source");
+			if (null == Source || !Source.IsAbsoluteUri) throw new ArgumentNullException("Source", $"The uri '{Source?.ToString()}' is not a valid absolute uri");
+			if (!"https".Equals(Source.Scheme, StringComparison.OrdinalIgnoreCase) && !AppConfig.IsDebug) throw new ArgumentOutOfRangeException("Source", "TLS connection is required for relay fetching");
 
 			//
 			// Make sure that the requested url is in the whitelist
 			//
 			var whitelist = AppConfig.DomainWhitelist;
-			if (!Util.DomainMatchesWildcard(Source?.DnsSafeHost, whitelist)) throw new ArgumentException($"The domain '{Source.DnsSafeHost}' is not whitelisted", "Source");
+			if (!Source.DomainMatchesWildcard(whitelist)) throw new ArgumentOutOfRangeException("Source", $"The domain '{Source.DnsSafeHost}' is not whitelisted");
 
 			if (String.IsNullOrEmpty(FileExtension))
 			{
 				FileExtension = Util.GetFileExtension(Source);
 			}
 
-			var res = new TempFile()
+			// inline preflight request helper
+			async Task<bool> Preflight(Action<System.Net.WebClient> callback)
 			{
-				PhysicalFile = new FileInfo(TempFile.GetRandomFileName(FileExtension))
-			};
-
-			using (var http = new System.Net.WebClient())
-			{
-				if (null != AuthContext)
-				{
-					foreach (var header in AuthContext.ToHttpHeaders())
+				return await IssueWebRequest(Source, AuthContext, "HEAD", async (xhr) =>
 					{
-						http.Headers.Add(header.Key, header.Value);
+						await xhr.DownloadStringTaskAsync(Source);
+						callback.Invoke(xhr);
+						return true;
 					}
-				}
+				);
+			}
+			
+			// inline download file helper
+			async Task<TempFile> Download(Action<System.Net.WebClient, TempFile> callback)
+			{
+				return await IssueWebRequest(Source, AuthContext, "GET", async (xhr) =>
+					{
+						var temp = new TempFile()
+						{
+							PhysicalFile = new FileInfo(TempFile.GetRandomFileName(FileExtension))
+						};
+						await xhr.DownloadFileTaskAsync(Source, temp.FullName);
+						if (null != callback) callback.Invoke(xhr, temp);
+						return temp.Exists() ? temp : null;
+					}
+				);
+			}
+			
+			//
+			// If the app is configured for a maximum file size, issue a preflight request to get at the headers
+			// without downloading the entire payload
+			//
+			Int64 max_size = AppConfig.MaxFileSize;
+			Int64 content_length = 0;
+			if (max_size > 0)
+			{
 				//
-				// allow whitelisted domains only
-				// in debug mode: also suppress certificate errors for whitelisted domains
+				// Make a preflight request to check whether the Content-Length exceeds the max allowed file size
 				//
-				try
+				await Preflight(xhr => {
+					Int64.TryParse(xhr.ResponseHeaders?.Get("Content-Length"), out content_length);
+				});
+
+				if (0 == content_length) return TempFile.Touch();
+				else if (max_size < content_length) // in bytes
 				{
-					System.Net.ServicePointManager.ServerCertificateValidationCallback += ServerCertificateValidator;
-					await http.DownloadFileTaskAsync(Source, res.PhysicalFile.FullName);
-					res.PhysicalFile.Refresh();
-					return res;
-				}
-				catch (Exception e)
-				{
-					throw (e);
-				}
-				finally
-				{
-					System.Net.ServicePointManager.ServerCertificateValidationCallback -= ServerCertificateValidator;
+					// fail
+					throw new PayloadTooLargeException(content_length, max_size);
 				}
 			}
+
+			// Proceed to download the payload and return the temp file
+			return await Download((xhr, temp) => { });
 		}
 
 		/// <summary>
