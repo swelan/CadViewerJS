@@ -243,8 +243,14 @@ namespace CadViewer
 		/// <param name="Source">Url to query</param>
 		/// <param name="FileExtension">The file extension of the temp file</param>
 		/// <param name="AuthContext">Relay authentication/authorization parameters supplied from the client</param>
+		/// <param name="MaxFileSize">0 = don't care; otherwise, throw PayloadTooLargeException if the Content-Length of the resource exceeds this value</param>
 		/// <returns></returns>
-		public static async Task<TempFile> DownloadFileAsync(Uri Source, string FileExtension = null, AuthorizationContext AuthContext = null)
+		public static async Task<TempFile> DownloadFileAsync(
+			Uri Source, 
+			string FileExtension = null, 
+			AuthorizationContext AuthContext = null,
+			long MaxFileSize = 0
+		)
 		{
 			//
 			// Require TLS connection, unless we're in debug mode
@@ -269,7 +275,7 @@ namespace CadViewer
 				return await IssueWebRequest(Source, AuthContext, "HEAD", async (xhr) =>
 					{
 						await xhr.DownloadStringTaskAsync(Source);
-						callback.Invoke(xhr);
+						if (null != callback) callback.Invoke(xhr);
 						return true;
 					}
 				);
@@ -295,9 +301,8 @@ namespace CadViewer
 			// If the app is configured for a maximum file size, issue a preflight request to get at the headers
 			// without downloading the entire payload
 			//
-			Int64 max_size = AppConfig.MaxFileSize;
 			Int64 content_length = 0;
-			if (max_size > 0)
+			if (MaxFileSize > 0)
 			{
 				//
 				// Make a preflight request to check whether the Content-Length exceeds the max allowed file size
@@ -307,10 +312,10 @@ namespace CadViewer
 				});
 
 				if (0 == content_length) return TempFile.Touch();
-				else if (max_size < content_length) // in bytes
+				else if (MaxFileSize < content_length) // in bytes
 				{
 					// fail
-					throw new PayloadTooLargeException(content_length, max_size);
+					throw new PayloadTooLargeException(content_length, MaxFileSize);
 				}
 			}
 
@@ -352,7 +357,7 @@ namespace CadViewer
 			// Remove any files not accessed for default randomly 15 min
 			System.IO.Directory.GetFiles(AppConfig.TempFolder)
 				.Select(x => new FileInfo(x))
-				.Where(x => x.LastAccessTimeUtc < DateTime.UtcNow.AddMinutes(-OlderThanMinutes))
+				.Where(x => x.LastWriteTimeUtc < DateTime.UtcNow.AddMinutes(-OlderThanMinutes))
 				.ToList()
 				.ForEach(x => {
 					try

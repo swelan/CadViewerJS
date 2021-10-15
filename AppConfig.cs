@@ -12,31 +12,10 @@ namespace CadViewer
 	/// </summary>
 	public class AppConfig
 	{
-		public static bool IsDebug
-		{
-			get
-			{
-				switch (GetProperty("CadViewer.Debug")?.Trim().ToLowerInvariant())
-				{
-					case "true":
-					case "on":
-					case "1":
-						return true;
-					default:
-						return false;
-				}
-			}
-		}
+		#region GeneralConfiguration
+		public static bool IsDebug { get => GetBool("CadViewer.Debug"); }
 		public static string TempFolder { get => GetLocalPath("CadViewer.TempFolder", UriKind.Absolute); }
 		public static string ConverterLocation { get => GetLocalPath("CadViewer.ConverterLocation", UriKind.Absolute); }
-
-
-		public static string CVJS_ProgramLocation { get => GetLocalPath("CadViewer.CVJS.ProgramLocation"); }
-		public static string CVJS_Executable { get => Path.GetFileName(GetProperty("CadViewer.CVJS.Executable")); }
-		public static string CVJS_ExecutablePath { get => Path.Combine(CVJS_ProgramLocation, CVJS_Executable ?? ""); }
-		public static string CVJS_LicenseLocation { get => GetLocalPath("CadViewer.CVJS.LicenseLocation", UriKind.RelativeOrAbsolute, CVJS_ProgramLocation); }
-		public static string CVJS_XPathLocation { get => GetLocalPath("CadViewer.CVJS.XPathLocation", UriKind.RelativeOrAbsolute, CVJS_ProgramLocation); }
-		public static string CVJS_FontLocation { get => GetLocalPath("CadViewer.CVJS.FontLocation", UriKind.RelativeOrAbsolute, CVJS_ProgramLocation); }
 
 		/// <summary>
 		/// Make exe timeout configurable; -1 => null, 0 => default
@@ -66,15 +45,27 @@ namespace CadViewer
 		/// <summary>
 		/// Maximum file size allowed as input to conversion, to avoid ridiculously large files
 		/// </summary>
-		public static Int64 MaxFileSize
+		public static long MaxFileSize
 		{
 			get
 			{
-				Int64.TryParse(GetProperty("CadViewer.MaxFileSize"), out Int64 max_size);
+				var max_size = GetLong("CadViewer.MaxFileSize");
 				return max_size > 0 ? max_size : 0;
 			}
 		}
+		#endregion
 
+		#region CVJS_Configuration
+		public static string CVJS_ProgramLocation { get => GetLocalPath("CadViewer.CVJS.ProgramLocation"); }
+		public static string CVJS_Executable { get => Path.GetFileName(GetProperty("CadViewer.CVJS.Executable")); }
+		public static string CVJS_ExecutablePath { get => Path.Combine(CVJS_ProgramLocation, CVJS_Executable ?? ""); }
+		public static string CVJS_LicenseLocation { get => GetLocalPath("CadViewer.CVJS.LicenseLocation", UriKind.RelativeOrAbsolute, CVJS_ProgramLocation); }
+		public static string CVJS_XPathLocation { get => GetLocalPath("CadViewer.CVJS.XPathLocation", UriKind.RelativeOrAbsolute, CVJS_ProgramLocation); }
+		public static string CVJS_FontLocation { get => GetLocalPath("CadViewer.CVJS.FontLocation", UriKind.RelativeOrAbsolute, CVJS_ProgramLocation); }
+		public static long CVJS_MaxFileSize { get => GetLong("CadViewer.CVJS.MaxFileSize", () => MaxFileSize); }
+		#endregion
+
+		#region LibreOfficeConfiguration
 		public static string LibreOfficeProgramLocation
 		{
 			get
@@ -119,6 +110,9 @@ namespace CadViewer
 		public static string LibreOfficePythonExecutable { get => Path.Combine(LibreOfficeProgramLocation, "python.exe"); }
 		public static string LibreOfficeUnoconvLocation { get => GetLocalPath("CadViewer.LibreOffice.UnoconvLocation");  }
 		public static string LibreOfficeUnoconvExecutable { get => Path.Combine(LibreOfficeUnoconvLocation, "unoconv"); }
+		public static long LibreOfficeMaxFileSize { get => GetLong("CadViewer.LibreOffice.MaxFileSize", () => MaxFileSize); }
+		#endregion
+
 
 		/// <summary>
 		/// Get a configuration property as string
@@ -155,6 +149,7 @@ namespace CadViewer
 					GetUri("CadViewer.ConverterLocation", UriKind.Absolute) : 
 					new Uri(RelativeTo + "/", UriKind.Absolute)
 			);
+
 			return new Uri(base_uri, v ?? new Uri(".", UriKind.Relative)).LocalPath.TrimEnd(new char[] { '/', '\\' });
 		}
 
@@ -178,6 +173,40 @@ namespace CadViewer
 		public static string GetRandomTemporaryFileName(string FileExtension = null)
 		{
 			return Util.GetRandomFileName(TempFolder, FileExtension);
+		}
+
+		public static long GetLong(string Index, Func<long> @default = null)
+		{
+			var prop = GetProperty(Index);
+			if (!String.IsNullOrWhiteSpace(prop))
+			{
+				if (long.TryParse(prop, out long value))
+				{
+					return value;
+				}
+			}
+			return (null != @default ? @default.Invoke() : default);
+		}
+
+		public static bool GetBool(string Index, Func<bool> @default = null)
+		{
+			var prop = GetProperty(Index)?.Trim().ToLowerInvariant();
+
+			switch (prop)
+			{
+				case "false":
+				case "off":
+				case "no":
+				case "0":
+					return false;
+				case "true":
+				case "on":
+				case "yes":
+				case "1":
+					return true;
+				default:
+					return (null != @default ? @default.Invoke() : default);
+			}
 		}
 	}
 }

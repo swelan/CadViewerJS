@@ -33,7 +33,8 @@ namespace CadViewer.HttpHandler
 						Username: HttpUtility.UrlDecode(auth_cookie?["username"]),
 						Password: HttpUtility.UrlDecode(auth_cookie?["password"]),
 						FormCookie: HttpUtility.UrlDecode(auth_cookie?["cookie"])
-					)
+					),
+					MaxFileSize: AppConfig.LibreOfficeMaxFileSize
 				);
 			}
 
@@ -43,7 +44,7 @@ namespace CadViewer.HttpHandler
 			var file = Request.Files["file"] ?? (Request.Files.Count > 0 ? Request.Files[0] : null);
 			if (null != file)
 			{
-				long max_size = AppConfig.MaxFileSize;
+				long max_size = AppConfig.LibreOfficeMaxFileSize;
 				if (max_size > 0 && file.InputStream.Length > max_size)
 				{
 					throw new PayloadTooLargeException(file.InputStream.Length, max_size);

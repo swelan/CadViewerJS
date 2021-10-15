@@ -38,7 +38,8 @@ namespace CadViewer.HttpHandler
 						Username: HttpUtility.UrlDecode(auth_cookie?["username"]),
 						Password: HttpUtility.UrlDecode(auth_cookie?["password"]),
 						FormCookie: HttpUtility.UrlDecode(auth_cookie?["cookie"])
-					)
+					),
+					MaxFileSize: AppConfig.CVJS_MaxFileSize
 				);
 			}
 
@@ -48,6 +49,11 @@ namespace CadViewer.HttpHandler
 			var file = Request.Files["file"];
 			if (null != file)
 			{
+				long max_size = AppConfig.CVJS_MaxFileSize;
+				if (max_size > 0 && file.InputStream.Length > max_size)
+				{
+					throw new PayloadTooLargeException(file.InputStream.Length, max_size);
+				}
 				using (var stream = file.InputStream)
 				{
 					return await TempFile.CreateTempFileAsync(stream, Request["format"]?.Trim() ?? Util.GetFileExtension(file.FileName));
