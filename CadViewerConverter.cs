@@ -76,8 +76,8 @@ namespace CadViewer
 			// Generate a list of command line arguments. Parameter names are validated and values are properly escaped
 			//
 			var parameters = GetExeParameters().Select(x => {
-				if (String.IsNullOrEmpty(x.Value?.ToString())) return $"-{x.Key}"; // -switch
-				return $"-{x.Key}={Util.EscapeCommandLineParameter(x.Value)}"; // -key=value
+				if (String.IsNullOrEmpty(x.Value?.ToString())) return $"{Util.EscapeCommandLineParameter($"-{x.Key}")}"; // -switch
+				return $"{Util.EscapeCommandLineParameter($"-{x.Key}")}={Util.EscapeCommandLineParameter(x.Value)}"; // -key=value
 			});
 
 			var executable = new FileInfo(AppConfig.CVJS_ExecutablePath);
