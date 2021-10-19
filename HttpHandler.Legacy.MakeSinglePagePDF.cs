@@ -27,6 +27,12 @@ namespace CadViewer.HttpHandler.Legacy
 			var Response = Context.Response;
 
 			object result = null;
+			var outputFileName = Util.GetFileName((Request.QueryString["filename"].OrDefault(null) ?? Request.Form["output-filename"].OrDefault(null))?.Trim());
+			var outputBaseName = Util.GetFileNameWithoutExtension(outputFileName);
+			var outputExtension = Util.GetFileExtension(outputFileName).OrDefault("pdf").Trim();
+			Int32.TryParse(Request["attachment"], out int attachment);
+			FileInfo output = null;
+			int ExitCode = -1;
 
 			var tag = Util.GetFileNameWithoutExtension(Request["fileName_0"]);
 			var rotation = Request["rotation_0"].OrDefault("landscape");
@@ -49,19 +55,19 @@ namespace CadViewer.HttpHandler.Legacy
 				var output_filename = Path.Combine(AppConfig.TempFolder, $"{tag}.png");
 
 				// Purge the input stream on close
-				using (var input = new FileStream(base64_file.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.DeleteOnClose | FileOptions.SequentialScan))//, 4096, FileOptions.Asynchronous|FileOptions.SequentialScan))
+				using (var input_stream = new FileStream(base64_file.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.DeleteOnClose | FileOptions.SequentialScan))//, 4096, FileOptions.Asynchronous|FileOptions.SequentialScan))
 				{
 					// Move file pointer past the content-type header:
-					input.Position = 22;// => "data:image/png;base64,".Length;
+					input_stream.Position = 22;// => "data:image/png;base64,".Length;
 
 					using (var trx = new FromBase64Transform(FromBase64TransformMode.IgnoreWhiteSpaces))
-					using (var decoder = new CryptoStream(input, trx, CryptoStreamMode.Read))
+					using (var decoder = new CryptoStream(input_stream, trx, CryptoStreamMode.Read))
 					{
-						using (var output = new FileStream(output_filename, FileMode.Create, FileAccess.Write, FileShare.None))//, 4096, FileOptions.Asynchronous|FileOptions.SequentialScan))
+						using (var out_stream = new FileStream(output_filename, FileMode.Create, FileAccess.Write, FileShare.None))//, 4096, FileOptions.Asynchronous|FileOptions.SequentialScan))
 						{
 							// decode input as a stream into output
 							//await decoder.CopyToAsync(output);
-							decoder.CopyTo(output);
+							decoder.CopyTo(out_stream);
 						}
 					}
 				}
@@ -84,12 +90,10 @@ namespace CadViewer.HttpHandler.Legacy
 				converter.Parameters.Add("model", null);
 				converter.Parameters.Add(rotation, null);
 				converter.Parameters.Add(pageformat, null);
-				converter.Parameters.Add("title", "A drawing");
-				converter.Parameters.Add("author", "Lars");
 
-				if (await converter.Execute())
+				if (await converter.Execute() && (converter.Output?.Exists ?? false))
 				{
-					var output = converter.Output;
+					output = converter.Output;
 					//
 					// The response is the pickup filename, in plain text
 					// A) Counter the '/converter/files' path prepended by the client software using back-relative path
@@ -100,9 +104,47 @@ namespace CadViewer.HttpHandler.Legacy
 					//Response.Write($"../../getFileHandler.ashx?remainOnServer=1&attachment=0&fileTag={HttpUtility.UrlEncode(Util.GetFileNameWithoutExtension(output.Name))}&Type={HttpUtility.UrlEncode(Util.GetFileExtension(output.Name))}");
 
 					// Option B): Configure a route that diverts the '/converter/files' path to the Download handler
-					Response.Write(output.Name);
+					//Response.Write(output.Name);
+				}
+				else
+				{
+					ExitCode = converter.ExitCode;
+					throw converter.LastError ?? new Exception("Unknown error");
 				}
 
+				if (!String.IsNullOrEmpty(outputBaseName))
+				{
+					//
+					// Send as a mime stream to client
+					//
+					Response.ContentType = "application/pdf";
+					Response.Charset = "UTF-8";
+					Response.AddHeader(
+						"Content-Disposition",
+						new System.Net.Http.Headers.ContentDispositionHeaderValue(0 == attachment ? "inline" : "attachment")
+						{
+							Size = output.Length,
+							FileName = $"{outputBaseName}.pdf",
+							FileNameStar = $"{outputBaseName}.pdf"
+						}.ToString()
+					);
+					Response.TransmitFile(output.FullName);
+					try
+					{
+						Response.Flush();
+						output.Delete();
+					}
+					catch (Exception)
+					{
+					}
+				}
+				else
+				{
+					//
+					// The legacy api simply returns the name of the output file as the body
+					//
+					Response.Write(output.Name);
+				}
 				/*
 				// TODO: deliver the result to the client in a structured format
 				result = new
@@ -123,7 +165,18 @@ namespace CadViewer.HttpHandler.Legacy
 				// The legacy api doesn't handle errors, the response body is treated as a pickup file name.
 				// For now, yield HTTP-500 (possibly separate HTTP-404) and emit a json error body
 				//
-				Response.Status = "500 Internal Server Error";
+				Response.Status = new Func<Exception, string>((err) =>
+				{
+					if (err is PayloadTooLargeException)
+					{
+						Response.AddHeader("DCS-Max-Converter-FileSize", ((PayloadTooLargeException)err).MaxSize.ToString());
+						Response.AddHeader("DCS-Converter-FileSize", ((PayloadTooLargeException)err).Size.ToString());
+						return "413 Payload Too Large";
+					}
+					else if (e is FileNotFoundException) return "404 File Not Found";
+					return "500 Internal Server Error";
+				})(e);
+
 				Response.ContentType = "application/json";
 				Response.Charset = "UTF-8";
 				result = new
@@ -132,7 +185,8 @@ namespace CadViewer.HttpHandler.Legacy
 					error = new
 					{
 						type = e.GetType().FullName,
-						message = e.Message
+						message = e.Message,
+						exitcode = ExitCode
 					}
 				};
 				Util.ToJSON(result, Response.Output);
