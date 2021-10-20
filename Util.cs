@@ -167,14 +167,17 @@ namespace CadViewer
 			}
 		}
 
+		private static readonly char[] unsafe_cmdline_chars = { '(', ')', '&', '|', '"' };
 		public static string EscapeCommandLineParameter(object v)
 		{
 			string argument = v?.ToString();
 			if (null != argument)
 			{
 				// Short circuit if argument is clean and doesn't need escaping
-				if (argument.Length != 0 && argument.All(c => !char.IsWhiteSpace(c) && c != '"'))
+				if (argument.Length != 0 && argument.All(c => !char.IsWhiteSpace(c) && !unsafe_cmdline_chars.Contains(c)))
+				{
 					return argument;
+				}
 
 				var buffer = new StringBuilder();
 
@@ -471,6 +474,10 @@ namespace CadViewer
 			return Callback.Invoke(null);
 		}
 
+		/// <summary>
+		/// Custom override of System.Net.WebClient that allows control over the verb used.
+		/// Useful for preflight requests.
+		/// </summary>
 		public class WebClientEx : System.Net.WebClient
 		{
 			public WebClientEx(string Method = null)

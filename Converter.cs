@@ -63,7 +63,7 @@ namespace CadViewer
 		public string OutputBaseName { get => _basename; set => _basename = Util.GetFileNameWithoutExtension(value).OrDefault(null); }
 
 		private string _outputformat = null;
-		public string OutputFormat { get => _outputformat; set => _outputformat = value.OrDefault(null); }
+		public string OutputFormat { get => _outputformat; set => _outputformat = value?.Trim().ToLowerInvariant().OrDefault(null); }
 
 		private string _action = null;
 		/// <summary>
@@ -96,6 +96,8 @@ namespace CadViewer
 
 				Input?.Refresh();
 				if (!(Input?.Exists ?? false)) throw new FileNotFoundException("Invalid input file", Input?.FullName);
+
+				if (String.IsNullOrWhiteSpace(OutputFormat)) OutputFormat = "pdf";
 
 				OutputFileName = TempFile.GetRandomFileName(OutputFormat);
 				if (!String.IsNullOrWhiteSpace(OutputBaseName))

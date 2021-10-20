@@ -83,7 +83,7 @@ namespace CadViewer.HttpHandler
 				{
 					Action = "convert",
 					InputFileName = source.FullName,
-					OutputFormat = outputExtension ?? "pdf"
+					OutputFormat = outputExtension.OrDefault("pdf")
 				};
 				
 				if (await converter.Execute())

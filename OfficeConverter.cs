@@ -48,7 +48,6 @@ namespace CadViewer
 		*/
 		protected override async Task<bool> ExecuteInternal()
 		{
-			OutputFileName = Path.Combine(Output.DirectoryName, $"{Util.GetFileNameWithoutExtension(Input.Name)}.pdf");
 			//
 			// Generate a list of command line arguments. Parameter names are validated and values are properly escaped
 			// NOTE: user_env must be an accessible, local folder. It must not exist, but must be creatable.
@@ -73,11 +72,12 @@ namespace CadViewer
 			var executable = new FileInfo(AppConfig.LibreOfficePythonExecutable);
 			var parameters = new List<string>() {
 				Util.EscapeCommandLineParameter(AppConfig.LibreOfficeUnoconvExecutable),
-				Util.EscapeCommandLineParameter("-f"),
-				Util.EscapeCommandLineParameter(OutputFormat ?? "pdf"),
+				AppConfig.IsDebug ? "--verbose" : null, // Output debug information via stdout/stderr
+				$"-f {Util.EscapeCommandLineParameter(OutputFormat)}",
+				$"-o {Util.EscapeCommandLineParameter(Output.FullName)}",
 				Util.EscapeCommandLineParameter(Input.FullName)
-			};
-
+			}.Where(x => !String.IsNullOrWhiteSpace(x));
+			
 			var result = await Util.StartProcessAsync(
 				Executable: executable,
 				Arguments: parameters,
