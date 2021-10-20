@@ -76,6 +76,18 @@ namespace CadViewer
 		/// </summary>
 		public ConverterParameters Parameters { get; private set; } = new ConverterParameters(StringComparer.OrdinalIgnoreCase);
 
+		public void AddParameter(string Key, object Value)
+		{
+			if (Parameters.ContainsKey(Key))
+			{
+				Parameters[Key] = Value;
+			}
+			else
+			{
+				Parameters.Add(Key, Value);
+			}
+		}
+
 		public int ExitCode { get; protected set; } = 0;
 		public Exception LastError { get; protected set; } = null;
 		protected abstract Task<bool> ExecuteInternal();

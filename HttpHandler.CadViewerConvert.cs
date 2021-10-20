@@ -96,13 +96,13 @@ namespace CadViewer.HttpHandler
 
 				if (null != input.parameters)
 				{
-					foreach (var p in input.parameters.Where(v => !String.IsNullOrEmpty(v.paramName)))
+					foreach (var p in input.parameters.Where(v => !String.IsNullOrWhiteSpace(v.paramName)))
 					{
 						//
 						// The parameters will be validated upon execution, so their respective content
 						// is unimportant from a security perspective at this point
 						//
-						converter.Parameters.Add(p.paramName, p.paramValue);
+						converter.AddParameter(p.paramName, p.paramValue);
 					}
 				}
 
