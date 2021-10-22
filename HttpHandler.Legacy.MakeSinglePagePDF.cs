@@ -25,6 +25,8 @@ namespace CadViewer.HttpHandler.Legacy
 		{
 			var Request = Context.Request;
 			var Response = Context.Response;
+			
+			Response.SetupCompression(Request);
 
 			object result = null;
 			var outputFileName = Util.GetFileName((Request.QueryString["filename"].OrDefault(null) ?? Request.Form["output-filename"].OrDefault(null))?.Trim());

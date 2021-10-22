@@ -57,12 +57,13 @@ namespace CadViewer.HttpHandler
 
 			return null;
 		}
-
 		public override async Task ProcessRequestAsync(HttpContext Context)
 		{
 			var Request = Context.Request;
 			var Response = Context.Response;
 
+			Response.SetupCompression(Request);
+			
 			object result = null;
 			var outputFileName = Util.GetFileName(Request["filename"].OrDefault(null)?.Trim());
 			var outputBaseName = Util.GetFileNameWithoutExtension(outputFileName);
@@ -195,6 +196,6 @@ namespace CadViewer.HttpHandler
 				Util.ToJSON(result, Response.Output);
 			}
 		}
-		public override bool IsReusable { get => false; }
+		public override bool IsReusable { get => true; }
 	}
 }

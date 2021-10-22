@@ -17,6 +17,7 @@ namespace CadViewer.HttpHandler
 			var Response = Context.Response;
 			var Request = Context.Request;
 
+			Response.SetupCompression(Request);
 			//
 			// Set reasonable default headers
 			// Content-Type is potentially modified below, application/octet-stream is the default for binary stream output

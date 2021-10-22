@@ -78,6 +78,36 @@ namespace CadViewer
 		}
 	}
 	#endregion
+
+	#region HttpResponseExtensions
+	public static class HttpResponseExtensions
+	{
+		public enum ContentEncodingEnum
+		{
+			None = 0,
+			GZip = 1,
+			Deflate = 2
+		}
+		public static ContentEncodingEnum SetupCompression(this HttpResponse Response, HttpRequest Request)
+		{
+			var accept = Request.Headers["Accept-Encoding"]?.Split(',').Select(x => x.Trim().ToLowerInvariant()) ?? new string[] { };
+			if (accept.Contains("deflate"))
+			{
+				Response.Filter = new System.IO.Compression.DeflateStream(Response.Filter, System.IO.Compression.CompressionLevel.Fastest);
+				Response.AddHeader("Content-Encoding", "deflate");
+				return ContentEncodingEnum.Deflate;
+			}
+			else if (accept.Contains("gzip") || accept.Contains("*"))
+			{
+				Response.Filter = new System.IO.Compression.GZipStream(Response.Filter, System.IO.Compression.CompressionLevel.Fastest);
+				Response.AddHeader("Content-Encoding", "gzip");
+				return ContentEncodingEnum.GZip;
+			}
+
+			return ContentEncodingEnum.None;
+		}
+	}
+	#endregion
 	/*
 	/// <summary>
 	/// TODO: Jeff Atwood's technique for scheduling repeating, simple tasks
