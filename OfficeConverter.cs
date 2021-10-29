@@ -70,11 +70,13 @@ namespace CadViewer
 			//
 
 			var executable = new FileInfo(AppConfig.LibreOfficePythonExecutable);
+			int uno_port = AppConfig.LibreOfficeUnoPort;
 			var parameters = new List<string>() {
 				Util.EscapeCommandLineParameter(AppConfig.LibreOfficeUnoconvExecutable),
 				AppConfig.IsDebug ? "--verbose" : null, // Output debug information via stdout/stderr
 				$"-f {Util.EscapeCommandLineParameter(OutputFormat)}",
 				$"-o {Util.EscapeCommandLineParameter(Output.FullName)}",
+				uno_port > 0 ? $"-p {uno_port}" : null,
 				Util.EscapeCommandLineParameter(Input.FullName)
 			}.Where(x => !String.IsNullOrWhiteSpace(x));
 			

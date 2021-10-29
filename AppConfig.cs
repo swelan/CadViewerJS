@@ -110,6 +110,7 @@ namespace CadViewer
 		public static string LibreOfficePythonExecutable { get => Path.Combine(LibreOfficeProgramLocation, "python.exe"); }
 		public static string LibreOfficeUnoconvLocation { get => GetLocalPath("CadViewer.LibreOffice.UnoconvLocation");  }
 		public static string LibreOfficeUnoconvExecutable { get => Path.Combine(LibreOfficeUnoconvLocation, "unoconv"); }
+		public static int LibreOfficeUnoPort { get => Convert.ToInt32(GetLong("CadViewer.LibreOffice.UnoPort")); }
 		public static long LibreOfficeMaxFileSize { get => GetLong("CadViewer.LibreOffice.MaxFileSize", () => MaxFileSize); }
 		#endregion
 
