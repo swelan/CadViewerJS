@@ -68,7 +68,28 @@ namespace CadViewer.HttpHandler
 			public string action { get; set; }
 			public string contentType { get; set; }
 			public string contentFormat { get; set; }
-			public string contentLocation { get; set; }
+			private string _contentLocation = "";
+			public string contentLocation {
+				get => _contentLocation;
+				set
+				{
+					// NOTE: the 'CVJS' frontend apparently escapes the url as a single component if the URL is on a properly escaped form...
+					// this hack counteracts this problem
+					if (
+						(value?.StartsWith("https%3A", StringComparison.OrdinalIgnoreCase) ?? false) ||
+						(value?.StartsWith("http%3A", StringComparison.OrdinalIgnoreCase) ?? false)
+					)
+					{
+						// The URL has been ambiguously encoded;
+						_contentLocation = System.Web.HttpUtility.UrlDecode(value);
+					}
+					else
+					{
+						// The URL is on a proper escaped form
+						_contentLocation = value;
+					}
+				}
+			}
 			public IList<Parameter> parameters { get; set; } = new List<Parameter>();
 
 			//

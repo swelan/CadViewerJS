@@ -20,7 +20,6 @@ namespace CadViewer.HttpHandler
 		{
 			var source_url = (Parameters?.contentLocation ?? Request?["url"])?.Trim();
 			var source_fmt = (Parameters?.contentFormat ?? Request["format"])?.Trim();
-
 			if (!String.IsNullOrEmpty(source_url))
 			{
 
@@ -72,6 +71,7 @@ namespace CadViewer.HttpHandler
 
 			//
 			// TODO: The 'request' parameter seems to be ambiguously url-encoded?
+			// UPDATE: see below, comment for url escaping.
 			// The client should send a regular www-form-urlencoded body, or simply the json document as the body
 			//
 
@@ -79,7 +79,14 @@ namespace CadViewer.HttpHandler
 			FileInfo output = null;
 			try
 			{
-				var input = RequestParameters.FromJSON(HttpUtility.UrlDecode(Request["request"]));
+				var input = RequestParameters.FromJSON(Request.Form["request"].OrDefault(Request.QueryString["request"]).OrDefault("{}"));
+
+				//
+				// The 'CVJS' frontend doesn't handle url escaping properly.
+				// if the 'converterLocation' parameter is on the form 'https%3A...', then the entire URL has been encoded as a single component (why??)
+				// if not, the url is correctly encoded (assuming that a properly escaped URL has been passed to the frontend viewer).
+				// The handling of this escaping problem is handled by the RequestParameters.contentLocation setter
+				//
 
 				source = await GetInputFile(Request, input);
 				if (!(source?.PhysicalFile?.Exists ?? false)) throw new FileNotFoundException("Invalid input file");
