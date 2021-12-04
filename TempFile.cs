@@ -227,6 +227,13 @@ namespace CadViewer
 					System.Net.ServicePointManager.ServerCertificateValidationCallback += ServerCertificateValidator;
 					return await Callback.Invoke(xhr);
 				}
+				catch (System.Net.WebException err)
+				{
+					System.Net.HttpStatusCode status = ((System.Net.HttpWebResponse)err.Response).StatusCode;
+					if (System.Net.HttpStatusCode.Forbidden == status) throw new NotAuthorizedException(err.Message);
+					if (System.Net.HttpStatusCode.Unauthorized == status) throw new NotAuthenticatedException(err.Message);
+					if (System.Net.HttpStatusCode.NotFound == status) throw new NotFoundException(err.Message);
+				}
 				catch (Exception)
 				{
 				}

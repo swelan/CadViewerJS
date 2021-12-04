@@ -180,6 +180,8 @@ namespace CadViewer.HttpHandler
 							Response.AddHeader("DCS-Converter-FileSize", ((PayloadTooLargeException)err).Size.ToString());
 							return "413 Payload Too Large";
 						}
+						if (err is NotAuthorizedException) return "403 Forbidden";
+						if (err is NotAuthenticatedException) return "403 Forbidden"; // Note translate 401->403 because of third-party error
 						return "404 File Not Found";
 					})(error);
 					Util.ToJSON(result, Response.Output);

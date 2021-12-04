@@ -12,6 +12,30 @@ using Newtonsoft.Json;
 namespace CadViewer
 {
 	#region AppExceptions
+	public class NotAuthorizedException : System.Exception
+	{
+		public NotAuthorizedException(string Message, Exception InnerException = null)
+			: base (Message, InnerException)
+		{
+
+		}
+	}
+	public class NotAuthenticatedException : System.Exception
+	{
+		public NotAuthenticatedException(string Message, Exception InnerException = null)
+			: base (Message, InnerException)
+		{
+
+		}
+	}
+	public class NotFoundException : System.Exception
+	{
+		public NotFoundException (string Message, Exception InnerException = null)
+			: base (Message, InnerException)
+		{
+
+		}
+	}
 	public class PayloadTooLargeException : System.Exception
 	{
 		public PayloadTooLargeException(string Message, Int64 Size, Int64 MaxSize, Exception InnerException = null)
