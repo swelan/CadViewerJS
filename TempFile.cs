@@ -224,15 +224,18 @@ namespace CadViewer
 
 				try
 				{
+					System.Net.ServicePointManager.SecurityProtocol |= System.Net.SecurityProtocolType.Tls12;
 					System.Net.ServicePointManager.ServerCertificateValidationCallback += ServerCertificateValidator;
 					return await Callback.Invoke(xhr);
 				}
 				catch (System.Net.WebException err)
 				{
-					System.Net.HttpStatusCode status = ((System.Net.HttpWebResponse)err.Response).StatusCode;
+					//err.data
+					System.Net.HttpStatusCode status = ((System.Net.HttpWebResponse)err.Response)?.StatusCode ?? System.Net.HttpStatusCode.Unused;
 					if (System.Net.HttpStatusCode.Forbidden == status) throw new NotAuthorizedException(err.Message);
 					if (System.Net.HttpStatusCode.Unauthorized == status) throw new NotAuthenticatedException(err.Message);
 					if (System.Net.HttpStatusCode.NotFound == status) throw new NotFoundException(err.Message);
+					throw err;
 				}
 				catch (Exception)
 				{
@@ -298,6 +301,7 @@ namespace CadViewer
 							PhysicalFile = new FileInfo(TempFile.GetRandomFileName(FileExtension))
 						};
 						await xhr.DownloadFileTaskAsync(Source, temp.FullName);
+
 						if (null != callback) callback.Invoke(xhr, temp);
 						return temp.Exists() ? temp : null;
 					}

@@ -101,7 +101,7 @@ namespace CadViewer.HttpHandler
 					OutputFormat = input?.GetParameterValue("f")?.ToString().Trim().ToLowerInvariant() ?? "svg"
 				};
 
-				if (null != input.parameters)
+				if (null != input?.parameters)
 				{
 					foreach (var p in input.parameters.Where(v => !String.IsNullOrWhiteSpace(v.paramName)))
 					{
