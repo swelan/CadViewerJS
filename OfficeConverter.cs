@@ -68,7 +68,8 @@ namespace CadViewer
 			// c:\libreoffice\program\python.exe c:\temp\cadviewer\bin\unoconv --listener
 			// c:\libreoffice\program\python.exe c:\temp\cadviewer\bin\unoconf -f pdf C:\files\mydocument.docx
 			//
-
+			// For pdf/a-2b: -eSelectPdfVersion=2
+			//
 			var executable = new FileInfo(AppConfig.LibreOfficePythonExecutable);
 			int uno_port = AppConfig.LibreOfficeUnoPort;
 			var parameters = new List<string>() {
